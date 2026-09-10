@@ -3055,9 +3055,9 @@ body {
   inset: 0;
   background: conic-gradient(
     from var(--mp-nova-border-orbit, 0deg),
-    #ffdfa5,
-    #ff3d00,
-    #ffdfa5
+    var(--nova-start, #ffdfa5),
+    var(--nova-end, #ff3d00),
+    var(--nova-start, #ffdfa5)
   );
   animation: nova-mark-orbit 5.5s linear infinite;
 }
@@ -3080,8 +3080,8 @@ body {
      * what makes the fill move. */
   background: linear-gradient(
     var(--mp-nova-angle, 125deg),
-    #ffdfa5 0.88%,
-    #ff3d00 var(--mp-nova-end-stop, 60%)
+    var(--nova-start, #ffdfa5) 0.88%,
+    var(--nova-end, #ff3d00) var(--mp-nova-end-stop, 60%)
   );
   background-size: 260% 260%;
   background-position: var(--mp-nova-shift-x, 50%) var(--mp-nova-shift-y, 50%);
@@ -3231,11 +3231,11 @@ body {
   height: 2px;
   background: linear-gradient(
     90deg,
-    #ffdfa5 0%,
-    #ff3d00 25%,
-    #ffdfa5 50%,
-    #ff3d00 75%,
-    #ffdfa5 100%
+    var(--nova-start, #ffdfa5) 0%,
+    var(--nova-end, #ff3d00) 25%,
+    var(--nova-start, #ffdfa5) 50%,
+    var(--nova-end, #ff3d00) 75%,
+    var(--nova-start, #ffdfa5) 100%
   );
   background-size: 300% 100%;
   opacity: 0;
@@ -3250,7 +3250,9 @@ body {
 .nova__composer:focus-within::after,
 .nova__composer--live::after {
   opacity: 1;
-  box-shadow: 0 1px 8px -1px rgba(255, 61, 0, 0.45);
+  /* color-mix so the glow follows the end stop rather than restating it as a
+     second hardcoded rgba. */
+  box-shadow: 0 1px 8px -1px color-mix(in srgb, var(--nova-end, #ff3d00) 45%, transparent);
   animation: nova-edge-sweep 2.4s linear infinite;
 }
 

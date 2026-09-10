@@ -23,6 +23,24 @@ import keepOverlayPlacement from './keepOverlayPlacement'
 // Installed once, for the whole document, rather than per component.
 keepOverlayPlacement()
 
+/* Publish the nova gradient's two stops as CSS variables.
+ *
+ * `$arvo-global-nova-start` and `$arvo-global-nova-end` are SCSS -- they
+ * compile away, and the only CSS-visible form is
+ * `--arvo-color-s-nova-static`, which bakes them into a fixed 61deg gradient.
+ * Anything that needs the stops on their own (a gradient at a moving angle, a
+ * conic ring, a glow) would otherwise hardcode the hexes and drift the day the
+ * token changes. Reading them back out of the token keeps one source.
+ */
+const novaStops = getComputedStyle(document.documentElement)
+  .getPropertyValue('--arvo-color-s-nova-static')
+  .match(/#[0-9a-f]{3,8}/gi)
+
+if (novaStops?.length >= 2) {
+  document.documentElement.style.setProperty('--nova-start', novaStops[0])
+  document.documentElement.style.setProperty('--nova-end', novaStops.at(-1))
+}
+
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <App />
