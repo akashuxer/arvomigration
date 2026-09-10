@@ -2896,21 +2896,26 @@ body {
   gap: 8px;
 }
 
-/* A read-only form field, not a bare tray of chips.
+/* Read-only scope fields.
  *
- * It holds values and sits in a form, so it should be shaped like the other
- * fields around it: the same filled surface, the same height, and Arvo's
- * read-only underline -- 2px dashed in b-readonly, exactly what ArvoTextbox
- * draws in the same state. Without the border it read as a container that
- * happened to be grey rather than as a field whose value is settled. */
-.bulk__readonly {
+ * Arvo draws its read-only underline at 2px, which next to a row of small chips
+ * read as a rule under the field rather than as the field's own edge. border-1
+ * keeps the same signal at the weight the rest of the form uses. */
+.bulk__field .arvo-multi-sel.is-readonly .arvo-multi-sel__border::after,
+.bulk__field .arvo-multi-sel.is-readonly [class$='__border']::after {
+  border-bottom-width: 1px;
+}
+
+/* The field takes the row's width; the + keeps its own column. */
+.bulk__field .arvo-multi-sel {
   flex: 1 1 auto;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
-  min-height: 32px;
-  padding: 4px 8px;
-  background-color: var(--arvo-color-s-layer-02, #f2f2f2);
-  border-bottom: 0.125rem dashed var(--arvo-color-b-readonly, #808080);
+  min-width: 0;
+}
+
+/* A read-only field's own toggle opens nothing -- the component keeps rendering
+ * it, so it is hidden here. A control that cannot act is a promise the field
+ * does not keep, and the + beside it is the one that actually changes this
+ * value. */
+.bulk__field .arvo-multi-sel.is-readonly .arvo-multi-sel__ico {
+  display: none;
 }

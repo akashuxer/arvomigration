@@ -1,9 +1,9 @@
 import { forwardRef, useEffect, useImperativeHandle, useState } from 'react'
 import {
   ArvoButton,
-  ArvoChip,
   ArvoCombobox,
   ArvoIconButton,
+  ArvoMultiSelect,
   ArvoNumberInput,
   ArvoRadio,
   ArvoRadioGroup,
@@ -175,7 +175,11 @@ const BulkEditForm = forwardRef(function BulkEditForm({ mode, onPickScope, onSum
                 aria-label="To measure"
                 placeholder="Select measure"
                 items={MEASURES}
-                value={row.measure}
+                /* null, not '': an empty string is a value the combobox tries
+                   to resolve against its items, and this build answers by
+                   selecting the first one -- so the form opened with a measure
+                   nobody had chosen and every gated control already unlocked. */
+                value={row.measure || null}
                 isFullWidth
                 /* No clear button: the row itself is the unit you remove, and
                    an X that empties the measure while leaving its adjustment
@@ -191,7 +195,7 @@ const BulkEditForm = forwardRef(function BulkEditForm({ mode, onPickScope, onSum
                   aria-label="Copy from"
                   placeholder="Select source"
                   items={MEASURES.filter(({ value }) => value !== row.measure)}
-                  value={row.source}
+                  value={row.source || null}
                   isClearable={false}
                   isDisabled={!isReady}
                   isFullWidth
@@ -265,11 +269,27 @@ const BulkEditForm = forwardRef(function BulkEditForm({ mode, onPickScope, onSum
               {label} <span className="bulk__required">*</span>
             </span>
             <div className="bulk__field-row">
-              <div className="bulk__readonly" role="group" aria-label={label}>
-                {values.map((value) => (
-                  <ArvoChip key={value} label={value} size="sm" appearance="outline" isReadOnly />
-                ))}
-              </div>
+              {/* ArvoMultiSelect in its read-only state, rather than a tray
+                  of chips built here.
+                  *
+                  * It is the component that already owns this shape: chips that
+                  * cannot be removed, no typing, no panel, and the read-only
+                  * context propagating into the chips so they match every other
+                  * settled field in the product. Hand-rolling it meant
+                  * maintaining a lookalike that would drift the first time the
+                  * chip or the field changed. */}
+              <ArvoMultiSelect
+                aria-label={label}
+                isReadOnly
+                /* Read-only is documented as suppressing the clear affordance,
+                   but this build still renders it -- passing false explicitly
+                   is what actually removes it. */
+                isClearable={false}
+                isFullWidth
+                items={values.map((value) => ({ id: value, value, label: value }))}
+                value={values}
+              />
+
               <ArvoIconButton
                 icon="plus"
                 tooltip={`Choose ${label.toLowerCase()}`}
