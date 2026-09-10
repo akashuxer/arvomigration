@@ -2664,7 +2664,7 @@ body {
  * when `between` splits it into two bounds. */
 .vfilter__row {
   display: grid;
-  grid-template-columns: 32px minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.4fr) 32px 32px;
+  grid-template-columns: 32px minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.4fr) 32px;
   align-items: center;
   gap: 8px;
 }
@@ -2729,14 +2729,6 @@ body {
   color: var(--arvo-color-t-tertiary, #757575);
 }
 
-.vfilter__topbottom {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding-top: 4px;
-  border-top: 1px solid var(--arvo-color-b-divider, #e5e5e5);
-}
-
 /* The builder owns its footer because Save depends on whether the conditions
  * are complete, which the window has no way to know. */
 .vfilter__footer {
@@ -2762,10 +2754,59 @@ body {
 
 @media (max-width: 720px) {
   .vfilter__row {
-    grid-template-columns: 24px minmax(0, 1fr) 32px 32px;
+    grid-template-columns: 24px minmax(0, 1fr) 32px;
   }
   .vfilter__row > *:nth-child(3),
   .vfilter__row > *:nth-child(4) {
     grid-column: 2;
   }
+}
+
+/* Column labels for the condition rows.
+ *
+ * Named once per group rather than once per row: three unlabelled dropdowns
+ * leave you inferring what each is for, and a label on every row repeats that
+ * inference in every condition. The controls carry their own accessible names,
+ * so this row is decoration for the eye and is hidden from assistive tech
+ * rather than read out a second time. */
+.vfilter__labels {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.4fr) 32px;
+  gap: 8px;
+  padding-bottom: 2px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--arvo-color-t-tertiary, #757575);
+}
+
+.vfilter__labels--rank,
+.vfilter__row--rank {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.4fr) 32px;
+}
+
+/* The ranking block is a sibling card of the condition groups, and says what it
+ * is: "top 10 by Trade Spend" is a different kind of statement from a
+ * condition, so it does not pretend to be another group. */
+.vfilter__group--rank {
+  margin-top: 8px;
+}
+
+.vfilter__group-title {
+  font-size: 12px;
+  font-weight: var(--arvo-medium, 500);
+  color: var(--arvo-color-t-secondary, #616161);
+}
+
+.vfilter__topbottom {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--arvo-color-b-divider, #e5e5e5);
+}
+
+.vfilter__topbottom > .vfilter__group--rank {
+  align-self: stretch;
 }

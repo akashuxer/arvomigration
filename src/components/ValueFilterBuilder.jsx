@@ -22,9 +22,9 @@ import {
  *    rail down the left of the rows is the reminder.
  *
  * 2. The value control follows the field. A date field gets a date picker, a
- *    measure gets a number input with the right suffix, a text field gets a
- *    textbox. The original showed `MM-dd-yyyy` as placeholder text in a plain
- *    box for every one of them.
+ *    measure gets a number input, a text field gets a textbox. The original
+ *    showed `MM-dd-yyyy` as placeholder text in a plain box for every one of
+ *    them.
  *
  * 3. An empty row is a draft, not an error. Rows arrive blank and Save stays
  *    disabled while any of them is incomplete, with the reason on the button
@@ -37,9 +37,9 @@ import {
 const FIELDS = [
   { id: 'due-date', value: 'due-date', label: 'Data Due Date', type: 'date' },
   { id: 'updated', value: 'updated', label: 'Last Updated', type: 'date' },
-  { id: 'spend', value: 'spend', label: 'Trade Spend', type: 'number', suffix: '$' },
+  { id: 'spend', value: 'spend', label: 'Trade Spend', type: 'number' },
   { id: 'units', value: 'units', label: 'Units Actuals', type: 'number' },
-  { id: 'growth', value: 'growth', label: 'Growth %', type: 'number', suffix: '%' },
+  { id: 'growth', value: 'growth', label: 'Growth %', type: 'number' },
   { id: 'account', value: 'account', label: 'Account', type: 'text' },
   { id: 'product', value: 'product', label: 'Product Line', type: 'text' },
 ]
@@ -70,6 +70,16 @@ const OPERATORS = {
 let seq = 0
 const newRow = () => ({ id: `row-${(seq += 1)}`, field: '', operator: '', value: '', valueTo: '' })
 const newGroup = () => ({ id: `grp-${(seq += 1)}`, join: 'and', rows: [newRow(), newRow()] })
+const newRank = () => ({ id: `rank-${(seq += 1)}`, field: '', mode: 'top', count: '' })
+
+/* Only measures can be ranked -- "top 10 accounts by Account" is not a
+ * question, so the field list here is narrower than the one above. */
+const MEASURES = FIELDS.filter(({ type }) => type === 'number')
+
+const RANK_MODES = [
+  { id: 'top', value: 'top', label: 'top' },
+  { id: 'bottom', value: 'bottom', label: 'bottom' },
+]
 
 const fieldOf = (row) => FIELDS.find(({ value }) => value === row.field)
 
@@ -98,6 +108,12 @@ const isComplete = (row) =>
 
 export default function ValueFilterBuilder({ onCancel, onSave }) {
   const [groups, setGroups] = useState(() => [newGroup()])
+  const [ranks, setRanks] = useState([])
+
+  const patchRank = (rankId, patch) =>
+    setRanks((current) =>
+      current.map((rank) => (rank.id === rankId ? { ...rank, ...patch } : rank)),
+    )
 
   const patchGroup = (groupId, patch) =>
     setGroups((current) =>
@@ -120,8 +136,16 @@ export default function ValueFilterBuilder({ onCancel, onSave }) {
     (row) => row.field || row.operator || String(row.value ?? '').trim(),
   )
   const incomplete = started.filter((row) => !isComplete(row)).length
-  const canSave = started.length > 0 && incomplete === 0
-  const hasMeasure = started.some((row) => typeOf(row) === 'number')
+  const startedRanks = ranks.filter((rank) => rank.field || String(rank.count ?? '').trim())
+  const incompleteRanks = startedRanks.filter(
+    (rank) => !(rank.field && String(rank.count ?? '').trim()),
+  ).length
+
+  /* Saveable when something has been built and nothing is half-built --
+     conditions and ranking rules counting alike, since either on its own is a
+     filter worth applying. */
+  const canSave =
+    started.length + startedRanks.length > 0 && incomplete + incompleteRanks === 0
 
   /* The filter as a sentence. Groups are bracketed only when there is more
      than one, because "(A and B)" with nothing beside it is punctuation for
@@ -135,7 +159,19 @@ export default function ValueFilterBuilder({ onCancel, onSave }) {
         return complete.length > 1 && groups.length > 1 ? `(${text})` : text
       })
       .filter(Boolean)
-    return parts.length ? `Showing rows where ${parts.join(' and ')}` : ''
+    const conditions = parts.length ? `Showing rows where ${parts.join(' and ')}` : ''
+    const rankText = startedRanks
+      .filter((rank) => rank.field && String(rank.count ?? '').trim())
+      .map(
+        (rank) =>
+          `${rank.mode} ${rank.count} by ${
+            MEASURES.find(({ value }) => value === rank.field)?.label ?? ''
+          }`,
+      )
+      .join(' and ')
+    if (conditions && rankText) return `${conditions}, then ${rankText}`
+    if (rankText) return `Showing the ${rankText}`
+    return conditions
   })()
 
   return (
@@ -203,6 +239,23 @@ export default function ValueFilterBuilder({ onCancel, onSave }) {
                 </span>
               </header>
 
+              {/* Column labels once per group, not once per row.
+                  *
+                  * Three unlabelled dropdowns leave you to infer what each one
+                  * is for; a label on every row would repeat that inference
+                  * three times over in a five-condition filter. The heading row
+                  * names the columns for sighted readers, and every control
+                  * carries its own accessible name, so a screen reader hears
+                  * "Field", "Condition", "Value" per control regardless of
+                  * where the eye takes them from. */}
+              <div className="vfilter__labels" aria-hidden="true">
+                <span />
+                <span>Field</span>
+                <span>Condition</span>
+                <span>Value</span>
+                <span />
+              </div>
+
               <ol className="vfilter__rows">
                 {group.rows.map((row, rowIndex) => (
                   <li className="vfilter__row" key={row.id}>
@@ -267,38 +320,26 @@ export default function ValueFilterBuilder({ onCancel, onSave }) {
                       />
                     )}
 
-                    {/* Duplicate, then edit. Two conditions on the same field
-                        differ by a word -- rebuilding the second from three
-                        empty dropdowns is the slow way to say "and under
-                        100,000" after saying "over 50,000". */}
-                    <ArvoIconButton
-                      icon="copy"
-                      tooltip="Duplicate condition"
-                      variant="tertiary"
-                      size="sm"
-                      isDisabled={!row.field}
-                      onClick={() =>
-                        patchGroup(group.id, {
-                          rows: group.rows.flatMap((entry) =>
-                            entry.id === row.id
-                              ? [entry, { ...entry, id: `row-${(seq += 1)}` }]
-                              : [entry],
-                          ),
-                        })
-                      }
-                    />
-                    <ArvoIconButton
-                      icon="close"
-                      tooltip="Remove condition"
-                      variant="tertiary"
-                      size="sm"
-                      isDisabled={group.rows.length === 1}
-                      onClick={() =>
-                        patchGroup(group.id, {
-                          rows: group.rows.filter(({ id }) => id !== row.id),
-                        })
-                      }
-                    />
+                    {/* Absent rather than disabled on a lone row: a control
+                        that can never be pressed is a question about why, and
+                        the answer -- "a group needs one condition" -- is
+                        already obvious from there being one. The cell stays,
+                        so the columns still line up. */}
+                    {group.rows.length > 1 ? (
+                      <ArvoIconButton
+                        icon="close"
+                        tooltip={`Remove condition ${rowIndex + 1}`}
+                        variant="tertiary"
+                        size="sm"
+                        onClick={() =>
+                          patchGroup(group.id, {
+                            rows: group.rows.filter(({ id }) => id !== row.id),
+                          })
+                        }
+                      />
+                    ) : (
+                      <span />
+                    )}
                   </li>
                 ))}
               </ol>
@@ -308,15 +349,85 @@ export default function ValueFilterBuilder({ onCancel, onSave }) {
       </div>
 
       <div className="vfilter__topbottom">
-        {/* Enabled once a measure is in play, because top/bottom ranks by
-            value and there is nothing to rank without one. */}
+        {/* Two rules is the ceiling: a top rule and a bottom rule describe the
+            ends of one ranking, and a third is either a duplicate or a
+            contradiction. The button disables once both exist rather than
+            accepting rules that cancel each other out. */}
         <ArvoButton
-          label="Add top / bottom rule"
+          label="Add top / bottom"
           icon="plus"
           variant="secondary"
           size="sm"
-          isDisabled={!hasMeasure}
+          isDisabled={ranks.length >= 2}
+          onClick={() => setRanks((current) => [...current, newRank()])}
         />
+
+        {ranks.length > 0 && (
+          <section className="vfilter__group vfilter__group--rank">
+            <header className="vfilter__group-head">
+              <span className="vfilter__group-title">Top / bottom</span>
+              <ArvoIconButton
+                icon="trash"
+                tooltip="Remove all top / bottom rules"
+                variant="tertiary"
+                size="sm"
+                onClick={() => setRanks([])}
+              />
+            </header>
+
+            <div className="vfilter__labels vfilter__labels--rank" aria-hidden="true">
+              <span>Measure</span>
+              <span>Rank</span>
+              <span>How many</span>
+              <span />
+            </div>
+
+            <ol className="vfilter__rows">
+              {ranks.map((rank, index) => (
+                <li className="vfilter__row vfilter__row--rank" key={rank.id}>
+                  <ArvoSelect
+                    aria-label="Measure"
+                    placeholder="Select measure"
+                    items={MEASURES}
+                    value={rank.field}
+                    isFullWidth
+                    onChange={(item) =>
+                      item && patchRank(rank.id, { field: item.value })
+                    }
+                  />
+                  <ArvoSelect
+                    aria-label="Rank"
+                    items={RANK_MODES}
+                    value={rank.mode}
+                    isFullWidth
+                    onChange={(item) => item && patchRank(rank.id, { mode: item.value })}
+                  />
+                  <ArvoNumberInput
+                    aria-label="How many"
+                    placeholder="10"
+                    min={1}
+                    isFullWidth
+                    value={rank.count}
+                    onInput={(event) => patchRank(rank.id, { count: event.target.value })}
+                  />
+                  {ranks.length > 1 ? (
+                    <ArvoIconButton
+                      icon="close"
+                      tooltip={`Remove rule ${index + 1}`}
+                      variant="tertiary"
+                      size="sm"
+                      onClick={() =>
+                        setRanks((current) => current.filter(({ id }) => id !== rank.id))
+                      }
+                    />
+                  ) : (
+                    <span />
+                  )}
+                </li>
+              ))}
+            </ol>
+          </section>
+        )}
       </div>
 
       <footer className="vfilter__footer">
@@ -328,8 +439,10 @@ export default function ValueFilterBuilder({ onCancel, onSave }) {
          * report. It doubles as the incomplete-row warning, so there is one
          * place to look rather than two. */}
         <span className="vfilter__status">
-          {incomplete > 0
-            ? `${incomplete} condition${incomplete === 1 ? ' still needs' : 's still need'} a value`
+          {incomplete + incompleteRanks > 0
+            ? `${incomplete + incompleteRanks} condition${
+                incomplete + incompleteRanks === 1 ? ' still needs' : 's still need'
+              } a value`
             : summary}
         </span>
         <span className="vfilter__actions">
@@ -374,8 +487,6 @@ function ValueField({ row, onChange, field: bound = 'value' }) {
       <ArvoNumberInput
         {...shared}
         placeholder="0"
-        prefix={field.suffix === '$' ? '$' : undefined}
-        suffix={field.suffix === '%' ? '%' : undefined}
         value={current}
         onInput={(event) => onChange(event.target.value)}
       />
