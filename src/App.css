@@ -930,35 +930,48 @@ body {
 .filter-chips {
   display: flex;
   align-items: center;
-  gap: 20px;
+  /* 8px, not 20: each filter now carries its own edge, and 20px between
+     bordered objects reads as a gap rather than a rhythm. */
+  gap: 8px;
   min-width: 0;
   overflow: hidden;
 }
 
-/* Figma puts the grey fill on the VALUE only -- the label is plain text sitting
- * on the bar, not inside the chip. */
+/* One bordered unit per filter, square-cornered like everything else here.
+ *
+ * The label and the value were two loose runs of text with a tinted box around
+ * only the value, so a row of them read as alternating grey blocks rather than
+ * as a set of filters. Wrapping the pair in a single hairline box makes each
+ * filter one object: the label says which dimension, the value says what it is
+ * set to, and the border says where one filter ends and the next begins. */
 .filter-chip {
   display: flex;
   align-items: center;
   gap: 6px;
+  padding: 4px 10px;
   white-space: nowrap;
+  background-color: var(--arvo-color-s-layer-01, #fff);
+  border: 1px solid var(--arvo-color-b-divider, #e5e5e5);
 }
 
+/* The dimension: quiet, because it is the part you already know. */
 .filter-label {
   font-size: 14px;
-  color: var(--arvo-color-t-secondary, #303030);
+  line-height: 20px;
+  color: var(--arvo-color-t-secondary, #616161);
 }
 
+/* l14-m: the value is the answer, and medium weight is what separates it from
+ * its own label without a second colour or a bigger size. The fill moved to the
+ * chip, so the value is now plain text inside it. */
 .filter-value {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 5px 8px;
   font-size: 14px;
+  line-height: 20px;
+  font-weight: var(--arvo-medium, 500);
   color: var(--arvo-color-t-primary, #010101);
-  /* s-layer-01, not -02: the bar now sits on the canvas, which IS layer-02, so
-   * a layer-02 pill was the same colour as its own background and vanished. */
-  background-color: var(--arvo-color-s-layer-01, #fff);
 }
 
 /* Member count behind an "(All)" selection -- secondary to the value it
