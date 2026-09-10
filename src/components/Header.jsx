@@ -47,7 +47,8 @@ export const VIEW_TABS = [
 ]
 
 export default function Header({
-  onOpenNova, activeTab, onTabChange, onBack, canGoBack = false }) {
+  onOpenNova,
+  isNovaOpen = false, activeTab, onTabChange, onBack, canGoBack = false }) {
   const navRef = useRef(null)
   const bellRef = useRef(null)
   const identityRef = useRef(null)
@@ -191,10 +192,18 @@ export default function Header({
         {/* Nova AI. The novai variant defaults to the `outline` appearance,
             which is the resting gradient ring -- `filled` is its active state,
             so it is left alone here. */}
+        {/* Filled while the panel is open, outline when it is not.
+            *
+            * The avatar is the only control for this panel, so it has to carry
+            * its state -- and Arvo's novai variant already ships that pair:
+            * `filled` is the live gradient, `outline` the resting ring. Using
+            * the appearance the design system defines beats inventing an active
+            * treatment that would have to be maintained beside it. */}
         <ArvoAvatar
           variant="novai"
+          appearance={isNovaOpen ? 'filled' : 'outline'}
           size="md"
-          tooltip="Ask o9 AI"
+          tooltip={isNovaOpen ? 'Close o9 AI' : 'Ask o9 AI'}
           isInteractive
           onClick={onOpenNova}
         />

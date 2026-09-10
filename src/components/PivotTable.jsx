@@ -54,6 +54,9 @@ function Sparkline({ data, color }) {
 
 // Exported so the scorecard view builds its widgets from the same rows the
 // table shows, rather than a second copy of the numbers.
+// Matches ContentArea's CURRENT_PERIOD: M06-2019.
+const CURRENT_PERIOD = 5
+
 export const MONTHS = [
   'M01-2019', 'M02-2019', 'M03-2019', 'M04-2019', 'M05-2019', 'M06-2019',
   'M07-2019', 'M08-2019', 'M09-2019', 'M10-2019', 'M11-2019', 'M12-2019',
@@ -219,8 +222,21 @@ export default function PivotTable({ hasToolbar = true, isV2 = false }) {
               <th scope="col" className="pivot__cell--attr">Data</th>
               {/* Month headers stay left-aligned per the guidelines, while the
                   values beneath them are right-aligned numerics. */}
-              {MONTHS.map((month) => (
-                <th scope="col" key={month}>{month}</th>
+              {/* The current period is tinted here as well as shaded in the
+                  chart above, in the same colour: one fact about the view, so
+                  it should not look like two. */}
+              {MONTHS.map((month, index) => (
+                <th
+                  scope="col"
+                  key={month}
+                  /* Arvo's own currenttime cell class, not one of ours: the
+                     design system already defines what "this is now" looks like
+                     in a grid, and it carries the specificity to beat the
+                     sticky header's background. */
+                  className={index === CURRENT_PERIOD ? 'pivot__cell--currenttime' : undefined}
+                >
+                  {month}
+                </th>
               ))}
               {isV2 && <th scope="col">Trend</th>}
             </tr>

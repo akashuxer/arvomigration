@@ -3033,24 +3033,65 @@ body {
   padding: 0 16px;
 }
 
-/* The mark: the gradient painted through the glyph itself, so the logo is the
-   colour rather than sitting on a coloured square. */
+/* The mark: the gradient painted through the glyph, inside the same orbiting
+   ring Arvo gives the nova avatar.
+   *
+   * The ring is a conic gradient rotated by its own keyframe, masked to a 1.5px
+   * band -- a border cannot hold a gradient that turns, so the ring is a layer
+   * beneath the face and the face covers all but its edge. */
 .nova__mark {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 64px;
-  height: 64px;
+  width: 72px;
+  height: 72px;
   margin-bottom: 8px;
-  border: 1px solid var(--arvo-color-b-divider, #e5e5e5);
-  font-size: 28px;
+  font-size: 30px;
+}
+
+.nova__mark-ring {
+  position: absolute;
+  inset: 0;
+  background: conic-gradient(
+    from var(--mp-nova-border-orbit, 0deg),
+    #ffdfa5,
+    #ff3d00,
+    #ffdfa5
+  );
+  animation: nova-mark-orbit 5.5s linear infinite;
+}
+
+/* The face sits 1.5px inside the ring, which is what leaves the ring visible as
+   a band rather than a filled square. */
+.nova__mark-face {
+  position: absolute;
+  inset: 1.5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--arvo-color-s-layer-01, #fff);
+}
+
+@keyframes nova-mark-orbit {
+  to {
+    --mp-nova-border-orbit: 360deg;
+  }
+}
+
+/* The custom property has to be registered or it cannot be animated -- an
+   unregistered property jumps between keyframes instead of interpolating. */
+@property --mp-nova-border-orbit {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
 }
 
 /* The gradient goes on the glyph's own pseudo-element, which is where the icon
  * font actually draws -- the same place Arvo's nova avatar puts it. Clipping
  * the parent's background to text left the glyph painting in the inherited
  * colour. */
-.nova__mark .o9con::before,
+.nova__mark-face .o9con::before,
 .nova__mode-mark .o9con::before {
   background: var(--arvo-color-s-nova-static);
   background-size: 260% 260%;
@@ -3063,7 +3104,7 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .nova__mark .o9con::before,
+  .nova__mark-face .o9con::before,
   .nova__mode-mark .o9con::before {
     animation: none;
   }
@@ -3123,25 +3164,52 @@ body {
   background-color: var(--arvo-color-s-layer-02, #f2f2f2);
 }
 
-/* The composer keeps the gradient as a hairline top edge -- enough to say the
-   assistant lives here, without a band of orange behind what you are typing.
-   *
-   * Two layers: a flat fill clipped to the padding box on top, the gradient
-   * clipped to the border box beneath, so only the transparent border shows it
-   * through. The order matters -- painting the gradient first and the fill
-   * second flooded the whole control. */
+/* The composer.
+ *
+ * An ordinary field at rest -- the gradient is the assistant's signature, and
+ * spending it on a box that is doing nothing leaves nothing to say with when
+ * something is. It arrives on focus, and travels while there is a question
+ * waiting to be sent.
+ *
+ * Two layers again: a flat fill clipped to the padding box over the gradient
+ * clipped to the border box, so only the border shows the gradient through. */
 .nova__composer {
   display: flex;
   flex-direction: column;
   gap: 4px;
   padding: 8px;
-  border: 1px solid var(--arvo-color-b-divider, #e5e5e5);
-  border-top: 2px solid transparent;
+  border: 1.5px solid transparent;
   background-image:
     linear-gradient(var(--arvo-color-s-layer-01, #fff), var(--arvo-color-s-layer-01, #fff)),
-    var(--arvo-color-s-nova-static);
+    linear-gradient(
+      var(--arvo-color-b-divider, #e5e5e5),
+      var(--arvo-color-b-divider, #e5e5e5)
+    );
   background-origin: border-box;
   background-clip: padding-box, border-box;
+  transition: background-image var(--arvo-duration-medium, 220ms)
+    var(--arvo-ease-standard, ease);
+}
+
+.nova__composer:focus-within,
+.nova__composer--live {
+  background-image:
+    linear-gradient(var(--arvo-color-s-layer-01, #fff), var(--arvo-color-s-layer-01, #fff)),
+    conic-gradient(
+      from var(--mp-nova-border-orbit, 0deg),
+      #ffdfa5,
+      #ff3d00,
+      #ffdfa5
+    );
+  animation: nova-mark-orbit 5.5s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nova__mark-ring,
+  .nova__composer:focus-within,
+  .nova__composer--live {
+    animation: none;
+  }
 }
 
 .nova__input {
@@ -3223,4 +3291,17 @@ body {
 
 .nova__mode-menu .is-selected {
   font-weight: var(--arvo-medium, 500);
+}
+
+/* The current-period header carries Arvo's currenttime fill.
+ *
+ * Scoped under .app-container--v2 to outrank that layout's own
+ * `thead th` background, which is more specific than the design system's
+ * currenttime rule and was painting straight over it. The weight is ours: a
+ * fill alone is easy to miss on a header row that is already tinted. */
+.pivot__table th.pivot__cell--currenttime,
+.app-container--v2 .pivot__table thead th.pivot__cell--currenttime {
+  background-color: var(--arvo-color-s-fn-currenttime, #efbc5c);
+  font-weight: var(--arvo-medium, 500);
+  color: var(--arvo-color-t-primary, #010101);
 }

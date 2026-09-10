@@ -46,11 +46,16 @@ export default function NovaPanel() {
   return (
     <div className="nova">
       <div className="nova__welcome">
-        {/* The mark carries the gradient; the square around it is the same
-            bordered tile the avatar sits in elsewhere, so the assistant reads
-            as one identity across the product. */}
+        {/* The mark, inside the orbiting ring the avatar wears.
+            *
+            * It is the same gesture as the control that opened the panel, at a
+            * size you can actually see it at -- which is what makes the panel
+            * feel like the assistant rather than a page about it. */}
         <span className="nova__mark" aria-hidden="true">
-          <i className="o9con o9con-genai" />
+          <span className="nova__mark-ring" />
+          <span className="nova__mark-face">
+            <i className="o9con o9con-genai" />
+          </span>
         </span>
         <h2 className="nova__title">Welcome to o9 AI</h2>
         <p className="nova__subtitle">Your Intelligent Partner for Enterprise Decisions</p>
@@ -71,7 +76,9 @@ export default function NovaPanel() {
         ))}
       </section>
 
-      <div className="nova__composer">
+      {/* is-live while there is something to send: the border wakes up when the
+          assistant has something to answer, and rests when it does not. */}
+      <div className={`nova__composer${prompt.trim() ? ' nova__composer--live' : ''}`}>
         <textarea
           ref={inputRef}
           className="nova__input"

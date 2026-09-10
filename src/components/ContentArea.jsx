@@ -6,7 +6,7 @@ import PivotTable from './PivotTable'
 import { ChartActions, PivotActions } from './TileActions'
 import { useSettings } from '../SettingsContext'
 import ChartContextMenu from './ChartContextMenu'
-import { ACTUAL, FORECAST } from '../viz'
+import { ACTUAL, FORECAST, CURRENT_PERIOD_TINT } from '../viz'
 
 const MONTHS = [
   'M01-2019', 'M02-2019', 'M03-2019', 'M04-2019', 'M05-2019', 'M06-2019',
@@ -153,20 +153,23 @@ export default function ContentArea({ isV2 = false, onReportSelect }) {
             fontWeight: String(settings.chartXWeight),
             color: '#303030',
           },
-          // No useHTML here: with it, Highcharts renders labels in a
-          // <foreignObject> and its auto-rotation writes NaN into the
-          // transform, flooding the console. The SVG renderer styles a plain
-          // <span> on its own.
+          /* Still no useHTML: with it, Highcharts renders labels in a
+             <foreignObject> and its auto-rotation writes NaN into the
+             transform, flooding the console. That rules out a background on the
+             label itself, so the current period is marked in the two ways SVG
+             text does support -- weight, and the currenttime colour the band
+             and the pivot header both use. The band behind the column carries
+             the fill. */
           formatter() {
-            const weight = this.pos === CURRENT_PERIOD ? '600' : '400'
-            return `<span style="font-weight:${weight}">${this.value}</span>`
+            if (this.pos !== CURRENT_PERIOD) return `${this.value}`
+            return `<span style="font-weight:600;color:#8a6d1f">${this.value}</span>`
           },
         },
         plotBands: [
           {
             from: CURRENT_PERIOD - 0.5,
             to: CURRENT_PERIOD + 0.5,
-            color: '#e9f5ef',
+            color: CURRENT_PERIOD_TINT,
           },
         ],
       },

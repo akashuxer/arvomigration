@@ -116,3 +116,15 @@ export const ACTUAL = viz.orange(4)
  * than the platform's negative/positive state colours, which are tuned to
  * interrupt -- twelve months of history should not read as twelve alerts. */
 export const OUTCOME = { met: viz.green(4), missed: viz.coral(2) }
+
+/* The current period.
+ *
+ * Arvo already names this: `s-fn-currenttime` is the function colour for "this
+ * is now", and the pivot ships a `--currenttime` cell class that uses it. So
+ * this is not a palette decision at all -- the chart reads the same token the
+ * grid does, and the two marks cannot drift.
+ *
+ * Softened for the plot area, where it sits under bars and gridlines that have
+ * to stay readable through it; the grid cell takes the token at full strength
+ * because nothing is drawn on top of a header. */
+export const CURRENT_PERIOD_TINT = 'rgba(239, 188, 92, 0.22)'

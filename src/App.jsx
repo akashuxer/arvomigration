@@ -203,6 +203,7 @@ function AppShell() {
       <div className="app-main">
         <Header
           onOpenNova={() => setActivePanel((current) => (current === 'nova' ? null : 'nova'))}
+          isNovaOpen={activePanel === 'nova'}
           activeTab={activeTab}
           onTabChange={goToTab}
           onBack={goBack}
