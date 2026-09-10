@@ -2940,3 +2940,10 @@ body {
   align-items: center;
   gap: 8px;
 }
+
+/* Reserves the trailing icon-button column on a field that has no + of its own,
+ * so every field in the form ends on the same edge. 24px is the compact icon
+ * button's real width -- measured, not assumed from the 32px row height. */
+.bulk__field-spacer {
+  flex: 0 0 24px;
+}

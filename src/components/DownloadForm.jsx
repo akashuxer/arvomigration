@@ -76,6 +76,11 @@ const DownloadForm = forwardRef(function DownloadForm({ onPickScope }, ref) {
             isFullWidth
             onChange={(value) => setFormat(typeof value === 'string' ? value : value?.value)}
           />
+          {/* Holds the column the + occupies on every field below, so this one
+              ends where they do. Without it the format field ran 40px wider
+              than the fields it sits above, which reads as a misalignment
+              rather than as the absence of a button. */}
+          <span className="bulk__field-spacer" aria-hidden="true" />
         </div>
       </div>
 
