@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import usePersistentState from '../usePersistentState'
 import ValueFilterBuilder from './ValueFilterBuilder'
 import BulkEditForm, { BULK_EDIT_TITLES } from './BulkEditForm'
+import DownloadForm from './DownloadForm'
 import {
   ArvoCheckbox,
   ArvoWindow,
@@ -10,6 +11,8 @@ import {
   ArvoIconButton,
   ArvoPanel,
   ArvoSplitButton,
+  ArvoButton,
+  ArvoTextbox,
   useToast,
 } from '@arvo/react'
 
@@ -98,9 +101,24 @@ export function PivotActions() {
   const [filterSummary, setFilterSummary] = useState('')
   const builderRef = useRef(null)
   const bulkRef = useRef(null)
+  const downloadRef = useRef(null)
+
+  const startDownload = () => {
+    const { format, isUtc } = downloadRef.current?.collect() ?? {}
+    if (!format) {
+      toast.show({ type: 'warning', message: 'Choose a format before downloading' })
+      return false
+    }
+    toast.show({
+      type: 'positive',
+      message: `Preparing ${format.toUpperCase()} download${isUtc ? ' in UTC' : ''}`,
+    })
+    return true
+  }
   /* Which scope field's picker is open, by label. A second window on top of the
      first, so the pivot's own filters are never the thing being typed over. */
   const [scopePicker, setScopePicker] = useState(null)
+  const [downloadName, setDownloadName] = useState('')
 
   const saveFilters = () => {
     const { groups, ranks } = builderRef.current?.collect() ?? { groups: [], ranks: [] }
@@ -136,11 +154,18 @@ export function PivotActions() {
 
   const run = (id) => {
     if (id === 'settings') setIsSettingsOpen(true)
+    /* The split button's main half and its format menu land in the same place:
+       the format is a field in the dialog, so picking one from the menu is a
+       shortcut into it rather than a different route out. */
+    if (id === 'download' || DOWNLOAD_FORMATS.some((format) => format.id === id)) {
+      setTask('download')
+    }
   }
 
   const TASK_TITLES = {
     ...BULK_EDIT_TITLES,
     manage: 'Manage Value Filters',
+    download: 'Download',
   }
 
   const isBulk = task === 'copy' || task === 'adjust' || task === 'apply'
@@ -281,7 +306,9 @@ export function PivotActions() {
             ? { label: 'Save', onClick: saveFilters }
             : isBulk
               ? { label: 'Submit', onClick: submitBulk }
-              : undefined
+              : task === 'download'
+                ? { label: 'Download', onClick: startDownload }
+                : undefined
         }
         /* Reset before Cancel: it is the recoverable one, and putting the
            discard-everything action closest to Submit is how a form gets
@@ -300,18 +327,47 @@ export function PivotActions() {
                   },
                   { label: 'Cancel' },
                 ]
-              : undefined
+              : task === 'download'
+                ? [{ label: 'Cancel' }]
+                : undefined
         }
         /* The sentence sits beside the buttons it describes, so it is read on
            the way to pressing Save rather than somewhere above it. */
         footerLeft={
-          (task === 'manage' || isBulk) && filterSummary ? (
+          task === 'download' ? (
+            /* Name and Save As, where the original put them: naming the export
+               is part of leaving the dialog, not part of describing it. */
+            <span className="dl__save">
+              <ArvoTextbox
+                aria-label="File name"
+                placeholder="File name"
+                width={220}
+                value={downloadName}
+                onInput={(event) => setDownloadName(event.target.value)}
+              />
+              <ArvoButton
+                label="Save as"
+                icon="save"
+                variant="secondary"
+                size="sm"
+                isDisabled={!downloadName.trim()}
+                onClick={() =>
+                  toast.show({
+                    type: 'positive',
+                    message: `Download settings saved as “${downloadName.trim()}”`,
+                  })
+                }
+              />
+            </span>
+          ) : (task === 'manage' || isBulk) && filterSummary ? (
             <span className="vfilter__status">{filterSummary}</span>
           ) : undefined
         }
       >
         {task === 'manage' ? (
           <ValueFilterBuilder ref={builderRef} onSummaryChange={setFilterSummary} />
+        ) : task === 'download' ? (
+          <DownloadForm ref={downloadRef} onPickScope={setScopePicker} />
         ) : isBulk ? (
           <BulkEditForm
             ref={bulkRef}
@@ -330,7 +386,9 @@ export function PivotActions() {
           in the share flow. */}
       <ArvoWindow
         size="md"
-        title={scopePicker ? `Select ${scopePicker.toLowerCase()}` : ''}
+        /* The field's own casing, not lowercased: "L1" is a name, and "Select
+           l1" reads as a typo. */
+        title={scopePicker ? `Select ${scopePicker}` : ''}
         isOpen={scopePicker != null}
         onOpenChange={(open) => !open && setScopePicker(null)}
         primaryAction={{ label: 'Add' }}

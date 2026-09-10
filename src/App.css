@@ -2929,3 +2929,10 @@ body {
 .bulk__field .arvo-multi-sel.is-readonly .arvo-multi-sel__ico {
   display: none;
 }
+
+/* Download: the name field and Save As, in the window's footer-left slot. */
+.dl__save {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}

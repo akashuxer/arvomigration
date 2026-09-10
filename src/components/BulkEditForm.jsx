@@ -297,7 +297,7 @@ const BulkEditForm = forwardRef(function BulkEditForm({ mode, onPickScope, onSum
 
               <ArvoIconButton
                 icon="plus"
-                tooltip={`Choose ${label.toLowerCase()}`}
+                tooltip={`Choose ${label}`}
                 variant="tertiary"
                 size="sm"
                 onClick={() => onPickScope(label)}
