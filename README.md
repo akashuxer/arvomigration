@@ -5,23 +5,26 @@ with favorites, two report views (chart + pivot), a right-hand launchbar with
 Workflows / User Settings / Help panels, notifications, sharing, and a compose
 flow.
 
-## Prerequisites
+## Arvo dependency
 
-This app does **not** install `@arvo/*` from a registry. Vite resolves those
-packages by path alias to a local checkout of the design system:
+`@arvo/*` is not installed from a registry. A trimmed copy of the design
+system's build lives in `vendor/arvo` and Vite resolves the packages there by
+alias, so the build is self-contained and works in CI.
 
-```js
-// vite.config.js
-const arvo = path.resolve(rootDir, '../../Desktop/Paranomic Filter/Arvo Design System/packages')
+Refresh that copy from a local Arvo checkout with:
+
+```bash
+npm run vendor:arvo                      # default path
+npm run vendor:arvo -- /path/to/packages # or point it somewhere
 ```
 
-So a clone will not build until that path exists (or the alias is repointed).
-The aliases are used instead of npm dependencies because the design-system path
-contains spaces, which npm writes verbatim into a `file:` symlink and breaks.
+The copy leaves out source maps and the CJK Noto faces (60MB+ of fallback this
+app never renders), taking 83MB down to ~15MB. `tools/vendor-arvo.mjs` also
+strips the matching `@font-face` rules so nothing requests a font that is not
+there.
 
-Aliased entry points: `@arvo/tokens/css`, `@arvo/assets/o9con/css`,
-`@arvo/assets/fonts/css`, `@arvo/assets/o9illus/css`, `@arvo/styles/css`,
-`@arvo/react`.
+Aliases are used rather than npm dependencies because the design-system path
+contains spaces, which npm writes verbatim into a `file:` symlink and breaks.
 
 ## Running
 
