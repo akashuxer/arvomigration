@@ -2896,9 +2896,13 @@ body {
   gap: 8px;
 }
 
-/* A read-only field, not a disabled one: these carry the pivot's current
- * selection and are changed through the picker behind the +, so they read as
- * settled rather than as broken inputs. */
+/* A read-only form field, not a bare tray of chips.
+ *
+ * It holds values and sits in a form, so it should be shaped like the other
+ * fields around it: the same filled surface, the same height, and Arvo's
+ * read-only underline -- 2px dashed in b-readonly, exactly what ArvoTextbox
+ * draws in the same state. Without the border it read as a container that
+ * happened to be grey rather than as a field whose value is settled. */
 .bulk__readonly {
   flex: 1 1 auto;
   display: flex;
@@ -2908,4 +2912,5 @@ body {
   min-height: 32px;
   padding: 4px 8px;
   background-color: var(--arvo-color-s-layer-02, #f2f2f2);
+  border-bottom: 0.125rem dashed var(--arvo-color-b-readonly, #808080);
 }

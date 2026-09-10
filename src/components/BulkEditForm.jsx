@@ -158,10 +158,13 @@ const BulkEditForm = forwardRef(function BulkEditForm({ mode, onPickScope, onSum
 
       <ol className="bulk__rows">
         {rows.map((row) => {
-          /* Everything downstream of the measure waits for it -- read-only
-             rather than disabled, so Arvo draws its dashed underline instead of
-             fading the control out. Faded reads as "broken or not for you";
-             dashed reads as "not yet", which is what is actually true. */
+          /* Everything downstream of the measure waits for it.
+             *
+             * Disabled here, not read-only: these controls are genuinely
+             * unavailable until a measure exists, and Arvo's read-only
+             * treatment (the dashed underline) means "settled, changed
+             * elsewhere" -- which is what the scope fields below are, and what
+             * these are not. */
           const isReady = Boolean(row.measure)
           return (
             <li className={`bulk__row bulk__row--${mode}`} key={row.id}>
@@ -174,6 +177,10 @@ const BulkEditForm = forwardRef(function BulkEditForm({ mode, onPickScope, onSum
                 items={MEASURES}
                 value={row.measure}
                 isFullWidth
+                /* No clear button: the row itself is the unit you remove, and
+                   an X that empties the measure while leaving its adjustment
+                   behind is a half-row nobody asked for. */
+                isClearable={false}
                 onChange={(value) =>
                   patchRow(row.id, { measure: typeof value === 'string' ? value : value?.value })
                 }
@@ -185,7 +192,8 @@ const BulkEditForm = forwardRef(function BulkEditForm({ mode, onPickScope, onSum
                   placeholder="Select source"
                   items={MEASURES.filter(({ value }) => value !== row.measure)}
                   value={row.source}
-                  isReadOnly={!isReady}
+                  isClearable={false}
+                  isDisabled={!isReady}
                   isFullWidth
                   onChange={(value) =>
                     patchRow(row.id, { source: typeof value === 'string' ? value : value?.value })
@@ -199,7 +207,7 @@ const BulkEditForm = forwardRef(function BulkEditForm({ mode, onPickScope, onSum
                     name={`direction-${row.id}`}
                     orientation="horizontal"
                     value={row.direction}
-                    isReadOnly={!isReady}
+                    isDisabled={!isReady}
                     onChange={({ value }) => patchRow(row.id, { direction: value })}
                   >
                     <ArvoRadio value="increase" label="Increase" />
@@ -210,7 +218,7 @@ const BulkEditForm = forwardRef(function BulkEditForm({ mode, onPickScope, onSum
                     name={`by-${row.id}`}
                     orientation="horizontal"
                     value={row.by}
-                    isReadOnly={!isReady}
+                    isDisabled={!isReady}
                     onChange={({ value }) => patchRow(row.id, { by: value })}
                   >
                     <ArvoRadio value="percent" label="%" />
@@ -224,7 +232,7 @@ const BulkEditForm = forwardRef(function BulkEditForm({ mode, onPickScope, onSum
                   aria-label="Value"
                   placeholder="0"
                   isFullWidth
-                  isReadOnly={!isReady}
+                  isDisabled={!isReady}
                   value={row.value}
                   onInput={(event) => patchRow(row.id, { value: event.target.value })}
                 />
