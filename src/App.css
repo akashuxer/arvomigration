@@ -3062,15 +3062,28 @@ body {
   animation: nova-mark-orbit 5.5s linear infinite;
 }
 
-/* The face sits 1.5px inside the ring, which is what leaves the ring visible as
-   a band rather than a filled square. */
+/* The face is filled, like the avatar's `filled` appearance, with the glyph
+   knocked out of it. The ring still reads because it turns and the fill does
+   not -- two gradients at different speeds, which is what gives the mark depth
+   rather than looking like one flat badge. */
 .nova__mark-face {
   position: absolute;
   inset: 1.5px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: var(--arvo-color-s-layer-01, #fff);
+  background: var(--arvo-color-s-nova-static);
+  background-size: 260% 260%;
+  background-position: var(--mp-nova-shift-x, 50%) var(--mp-nova-shift-y, 50%);
+  animation: nova-fill-breathe 4.2s ease-in-out infinite alternate;
+}
+
+.nova__mark-face .o9con,
+.nova__mark-face .o9con::before {
+  color: var(--arvo-color-t-inverse, #fff);
+  -webkit-text-fill-color: var(--arvo-color-t-inverse, #fff);
+  background: none;
+  animation: none;
 }
 
 @keyframes nova-mark-orbit {
@@ -3091,7 +3104,6 @@ body {
  * font actually draws -- the same place Arvo's nova avatar puts it. Clipping
  * the parent's background to text left the glyph painting in the inherited
  * colour. */
-.nova__mark-face .o9con::before,
 .nova__mode-mark .o9con::before {
   background: var(--arvo-color-s-nova-static);
   background-size: 260% 260%;
@@ -3104,7 +3116,6 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .nova__mark-face .o9con::before,
   .nova__mode-mark .o9con::before {
     animation: none;
   }
@@ -3166,48 +3177,60 @@ body {
 
 /* The composer.
  *
- * An ordinary field at rest -- the gradient is the assistant's signature, and
- * spending it on a box that is doing nothing leaves nothing to say with when
- * something is. It arrives on focus, and travels while there is a question
- * waiting to be sent.
+ * The same filled grey field as every other input in the product -- an
+ * assistant is still a form, and dressing it differently at rest only makes it
+ * look like it belongs to another app.
  *
- * Two layers again: a flat fill clipped to the padding box over the gradient
- * clipped to the border box, so only the border shows the gradient through. */
+ * The gradient is spent on one edge, and only when the field is live: a bottom
+ * border that lights and travels on focus, which is where Arvo already draws
+ * its focus rule. Bordering all four sides made the box shout before anyone had
+ * typed into it.
+ */
 .nova__composer {
   display: flex;
   flex-direction: column;
   gap: 4px;
   padding: 8px;
-  border: 1.5px solid transparent;
-  background-image:
-    linear-gradient(var(--arvo-color-s-layer-01, #fff), var(--arvo-color-s-layer-01, #fff)),
-    linear-gradient(
-      var(--arvo-color-b-divider, #e5e5e5),
-      var(--arvo-color-b-divider, #e5e5e5)
-    );
-  background-origin: border-box;
-  background-clip: padding-box, border-box;
-  transition: background-image var(--arvo-duration-medium, 220ms)
-    var(--arvo-ease-standard, ease);
+  background-color: var(--arvo-color-s-layer-02, #f2f2f2);
+  border-bottom: 1.5px solid var(--arvo-color-b-input, #b0b0b0);
+  transition: border-color var(--arvo-duration-fast, 120ms) var(--arvo-ease-standard, ease);
 }
 
-.nova__composer:focus-within,
-.nova__composer--live {
-  background-image:
-    linear-gradient(var(--arvo-color-s-layer-01, #fff), var(--arvo-color-s-layer-01, #fff)),
-    conic-gradient(
-      from var(--mp-nova-border-orbit, 0deg),
-      #ffdfa5,
-      #ff3d00,
-      #ffdfa5
-    );
+/* The lit edge is a layer of its own rather than a border, because a border
+   cannot hold a gradient that moves. It sits on the field's bottom edge and is
+   revealed by focus. */
+.nova__composer {
+  position: relative;
+}
+
+.nova__composer::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1.5px;
+  height: 1.5px;
+  background: conic-gradient(
+    from var(--mp-nova-border-orbit, 0deg),
+    #ffdfa5,
+    #ff3d00,
+    #ffdfa5
+  );
+  opacity: 0;
+  transition: opacity var(--arvo-duration-medium, 220ms) var(--arvo-ease-standard, ease);
+}
+
+.nova__composer:focus-within::after,
+.nova__composer--live::after {
+  opacity: 1;
   animation: nova-mark-orbit 5.5s linear infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {
   .nova__mark-ring,
-  .nova__composer:focus-within,
-  .nova__composer--live {
+  .nova__mark-face,
+  .nova__composer:focus-within::after,
+  .nova__composer--live::after {
     animation: none;
   }
 }

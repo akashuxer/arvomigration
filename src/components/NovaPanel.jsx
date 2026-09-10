@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { ArvoButton, ArvoIconButton, useToast } from '@arvo/react'
+import { ArvoIconButton, useToast } from '@arvo/react'
 
 /* o9 AI — the Nova assistant panel.
  *
@@ -67,10 +67,22 @@ export default function NovaPanel() {
           Suggestions
         </h3>
         {SUGGESTIONS.map((text) => (
-          /* A button, not a card: it does something when pressed, and the
-             cheapest way to make that legible is to let it be the control it
-             is. */
-          <button key={text} type="button" className="nova__suggestion" onClick={() => ask(text)}>
+          /* Fills the box rather than sending.
+             *
+             * A suggestion is a starting point, and the thing people most often
+             * want to do with one is change a word in it before asking. Sending
+             * on click takes that away and makes a wrong guess cost a round
+             * trip; filling the box keeps the edit one keystroke away and still
+             * leaves Enter to send. */
+          <button
+            key={text}
+            type="button"
+            className="nova__suggestion"
+            onClick={() => {
+              setPrompt(text)
+              inputRef.current?.focus()
+            }}
+          >
             {text}
           </button>
         ))}
@@ -135,9 +147,12 @@ export default function NovaPanel() {
           <span className="nova__tool-group">
             <ArvoIconButton icon="paperclip" tooltip="Attach a file" variant="tertiary" size="sm" />
             <ArvoIconButton icon="microphone" tooltip="Dictate" variant="tertiary" size="sm" />
-            <ArvoButton
-              label="Send"
+            {/* An icon, not a labelled button: the composer already says "Ask
+                o9 AI", so the word "Send" repeats what the field just told you
+                and costs the width three tools have to share. */}
+            <ArvoIconButton
               icon="paper-plane"
+              tooltip="Send"
               variant="primary"
               size="sm"
               isDisabled={!prompt.trim()}
