@@ -2960,3 +2960,30 @@ body {
 .bulk__field-spacer {
   flex: 0 0 24px;
 }
+
+/* Tenant and avatar as one identity trigger. */
+.identity {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.identity__lines {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* Arvo's rich tooltip is a light surface, not the dark one this pattern wears
+ * in other products -- so these take the ordinary text colours. Inverse white
+ * would have been white on white. */
+.identity__name {
+  color: var(--arvo-color-t-primary, #010101);
+}
+
+/* The address is the confirming detail, not the headline. */
+.identity__email {
+  font-size: 12px;
+  color: var(--arvo-color-t-secondary, #616161);
+}

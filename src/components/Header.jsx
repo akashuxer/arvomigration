@@ -1,5 +1,10 @@
 import { useLayoutEffect, useRef, useState } from 'react'
-import { ArvoAvatar, ArvoDropdownIconButton, ArvoIconButton } from '@arvo/react'
+import {
+  ArvoAvatar,
+  ArvoDropdownIconButton,
+  ArvoIconButton,
+  ArvoRichTooltip,
+} from '@arvo/react'
 import NotificationsPopover from './NotificationsPopover'
 import CreatePostWindow from './CreatePostWindow'
 
@@ -16,7 +21,18 @@ const MORE_ACTIONS = [
   { id: 'edit', label: 'Edit', icon: 'edit' },
 ]
 
-const PROFILE_TOOLTIP = ['My Profile', 'Kayle Sank', 'Tenant: Optimal Industries'].join('\n')
+/* Who you are signed in as, and where.
+ *
+ * The tenant name and the avatar are one identity between them -- the tenant
+ * says which company's data is on screen, the avatar says whose account is
+ * reading it -- so they share a tooltip rather than each holding half of the
+ * answer. Getting the tenant wrong is the expensive mistake in a product where
+ * two customers' plans look alike, which is why it leads. */
+const IDENTITY = {
+  tenant: 'Optimal Industries',
+  name: 'Kayle Sank',
+  email: 'kayle.sink@o9solutions.com',
+}
 
 // The View Tabs: the top-level report views this workspace offers.
 export const VIEW_TABS = [
@@ -27,6 +43,7 @@ export const VIEW_TABS = [
 export default function Header({ activeTab, onTabChange, onBack, canGoBack = false }) {
   const navRef = useRef(null)
   const bellRef = useRef(null)
+  const identityRef = useRef(null)
   // Owned here so the bell can badge it; the popover holds the notifications
   // themselves and reports the count up.
   const [unread, setUnread] = useState(0)
@@ -168,10 +185,29 @@ export default function Header({ activeTab, onTabChange, onBack, canGoBack = fal
             which is the resting gradient ring -- `filled` is its active state,
             so it is left alone here. */}
         <ArvoAvatar variant="novai" size="md" tooltip="Ask Nova AI" isInteractive />
-        <div className="tenant-name">Optimal Industries</div>
-        {/* Avatar's `tooltip` is an accessible label plus a native title
-            tooltip, so the newlines render as separate lines on hover. */}
-        <ArvoAvatar variant="initials" name="Kayle Sank" size="md" tooltip={PROFILE_TOOLTIP} />
+        {/* One trigger across both, so hovering either the tenant or the
+            avatar answers the whole question. */}
+        <span className="identity" ref={identityRef}>
+          <span className="tenant-name">{IDENTITY.tenant}</span>
+          <ArvoAvatar variant="initials" name={IDENTITY.name} size="md" />
+        </span>
+
+        <ArvoRichTooltip
+          triggerRef={identityRef}
+          trigger="hover"
+          placement="bottom-end"
+          title={`Tenant: ${IDENTITY.tenant}`}
+          /* Name and address on their own lines, as bodyContent rather than one
+             message string: the inline adapter renders a message as a single
+             run, and a name run together with an email is the one thing this
+             tooltip exists to keep apart. */
+          bodyContent={
+            <span className="identity__lines">
+              <span className="identity__name">{IDENTITY.name}</span>
+              <span className="identity__email">{IDENTITY.email}</span>
+            </span>
+          }
+        />
       </div>
     </header>
   )
