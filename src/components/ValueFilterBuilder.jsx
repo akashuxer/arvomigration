@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { forwardRef, useEffect, useImperativeHandle, useState } from 'react'
 import {
   ArvoButton,
   ArvoDatePicker,
@@ -106,7 +106,7 @@ const isComplete = (row) =>
       (row.operator !== 'between' || String(row.valueTo ?? '').trim()),
   )
 
-export default function ValueFilterBuilder({ onCancel, onSave }) {
+const ValueFilterBuilder = forwardRef(function ValueFilterBuilder({ onSummaryChange }, ref) {
   const [groups, setGroups] = useState(() => [newGroup()])
   const [ranks, setRanks] = useState([])
 
@@ -152,6 +152,17 @@ export default function ValueFilterBuilder({ onCancel, onSave }) {
   /* The filter as a sentence. Groups are bracketed only when there is more
      than one, because "(A and B)" with nothing beside it is punctuation for
      its own sake. */
+  /* What Save collects. Incomplete rows are dropped here rather than counted by
+     the caller, so a partial condition never leaves this component. */
+  useImperativeHandle(ref, () => ({
+    collect: () => ({
+      groups: groups
+        .map((group) => ({ ...group, rows: group.rows.filter(isComplete) }))
+        .filter(({ rows }) => rows.length),
+      ranks: ranks.filter((rank) => rank.field && String(rank.count ?? '').trim()),
+    }),
+  }))
+
   const summary = (() => {
     const parts = groups
       .map(({ rows, join }) => {
@@ -175,6 +186,19 @@ export default function ValueFilterBuilder({ onCancel, onSave }) {
     if (rankText) return `Showing the ${rankText}`
     return conditions
   })()
+
+  /* The sentence lives in the window's footer, beside the buttons it describes,
+     so it is read on the way to pressing Save rather than above it. */
+  const footerText =
+    ignored > 0
+      ? `${summary ? `${summary}. ` : ''}${ignored} incomplete condition${
+          ignored === 1 ? ' will be' : 's will be'
+        } ignored`
+      : summary
+
+  useEffect(() => {
+    onSummaryChange?.(footerText)
+  }, [footerText, onSummaryChange])
 
   return (
     <div className="vfilter">
@@ -438,43 +462,11 @@ export default function ValueFilterBuilder({ onCancel, onSave }) {
         )}
       </div>
 
-      <footer className="vfilter__footer">
-        {/* The filter in words.
-         *
-         * A builder shows the shape of a query but not its meaning: five rows
-         * of dropdowns are five things to decode. One sentence underneath is
-         * how you check you built what you meant before applying it to the
-         * report. It doubles as the incomplete-row warning, so there is one
-         * place to look rather than two. */}
-        <span className="vfilter__status">
-          {ignored > 0
-            ? `${summary ? `${summary}. ` : ''}${ignored} incomplete condition${
-                ignored === 1 ? ' will be' : 's will be'
-              } ignored`
-            : summary}
-        </span>
-        <span className="vfilter__actions">
-          <ArvoButton label="Cancel" variant="secondary" size="sm" onClick={onCancel} />
-          <ArvoButton
-            label="Save"
-            variant="primary"
-            size="sm"
-            onClick={() =>
-              onSave({
-                groups: groups
-                  .map((group) => ({ ...group, rows: group.rows.filter(isComplete) }))
-                  .filter(({ rows }) => rows.length),
-                ranks: ranks.filter(
-                  (rank) => rank.field && String(rank.count ?? '').trim(),
-                ),
-              })
-            }
-          />
-        </span>
-      </footer>
     </div>
   )
-}
+})
+
+export default ValueFilterBuilder
 
 /* The value control, chosen by the field's type rather than by a single text
  * box asked to mean everything. */

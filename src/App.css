@@ -2729,27 +2729,12 @@ body {
   color: var(--arvo-color-t-tertiary, #757575);
 }
 
-/* The builder owns its footer because Save depends on whether the conditions
- * are complete, which the window has no way to know. */
-.vfilter__footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding-top: 12px;
-  border-top: 1px solid var(--arvo-color-b-divider, #e5e5e5);
-}
-
-.vfilter__actions {
-  display: flex;
-  gap: 8px;
-}
-
-/* The summary is the sentence the builder adds up to, so it reads as prose
- * rather than as another label. */
+/* The sentence the builder adds up to, rendered in the window's footer-left
+ * slot. Prose, not a label -- it is read, not scanned. */
 .vfilter__status {
-  flex: 1 1 auto;
-  min-width: 0;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--arvo-color-t-secondary, #616161);
 }
 
 @media (max-width: 720px) {
@@ -2821,4 +2806,106 @@ body {
 
 .vfilter__topbottom > .vfilter__group--rank {
   align-self: stretch;
+}
+
+/* Bulk Edit — Copy / Adjust / Apply.
+ *
+ * Same shape as the value-filter builder: labelled columns, rows on one grid,
+ * scope beneath. Each verb has its own track list because Adjust carries two
+ * radio groups where Copy carries a second measure. */
+.bulk {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 4px 0;
+}
+
+.bulk__labels,
+.bulk__row {
+  display: grid;
+  align-items: center;
+  gap: 12px;
+}
+
+.bulk__labels--adjust,
+.bulk__row--adjust {
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 0.8fr) minmax(0, 0.7fr) 32px;
+}
+
+.bulk__labels--copy,
+.bulk__row--copy {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 32px;
+}
+
+.bulk__labels--apply,
+.bulk__row--apply {
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 0.7fr) 32px;
+}
+
+.bulk__labels {
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--arvo-color-t-secondary, #616161);
+}
+
+.bulk__rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Scope sits under a rule because it answers a different question from the
+ * measures above it: what changes, then where it changes. */
+.bulk__scope {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--arvo-color-b-divider, #e5e5e5);
+  transition: opacity var(--arvo-duration-medium, 220ms) var(--arvo-ease-standard, ease);
+}
+
+/* Dimmed until a measure exists. The fields describe where an edit lands, and
+ * until something is being edited there is nothing to place. */
+.bulk__scope--waiting {
+  opacity: 0.5;
+}
+
+.bulk__field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.bulk__field-label {
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--arvo-color-t-secondary, #616161);
+}
+
+.bulk__required {
+  color: var(--arvo-color-t-negative, #c11429);
+}
+
+.bulk__field-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* A read-only field, not a disabled one: these carry the pivot's current
+ * selection and are changed through the picker behind the +, so they read as
+ * settled rather than as broken inputs. */
+.bulk__readonly {
+  flex: 1 1 auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 4px 8px;
+  background-color: var(--arvo-color-s-layer-02, #f2f2f2);
 }

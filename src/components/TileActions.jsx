@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import usePersistentState from '../usePersistentState'
 import ValueFilterBuilder from './ValueFilterBuilder'
+import BulkEditForm, { BULK_EDIT_TITLES } from './BulkEditForm'
 import {
   ArvoCheckbox,
   ArvoWindow,
@@ -94,6 +95,28 @@ export function PivotActions() {
    * show it: a filter that changes what the grid contains, with nothing on
    * screen to say so, is how people end up mistrusting the numbers. */
   const [appliedFilters, setAppliedFilters] = useState(0)
+  const [filterSummary, setFilterSummary] = useState('')
+  const builderRef = useRef(null)
+  const bulkRef = useRef(null)
+  /* Which scope field's picker is open, by label. A second window on top of the
+     first, so the pivot's own filters are never the thing being typed over. */
+  const [scopePicker, setScopePicker] = useState(null)
+
+  const saveFilters = () => {
+    const { groups, ranks } = builderRef.current?.collect() ?? { groups: [], ranks: [] }
+    const conditions = groups.reduce((total, { rows }) => total + rows.length, 0)
+    setAppliedFilters(conditions + ranks.length)
+
+    const parts = []
+    if (conditions) parts.push(`${conditions} value filter${conditions === 1 ? '' : 's'}`)
+    if (ranks.length) {
+      parts.push(`${ranks.length} top/bottom rule${ranks.length === 1 ? '' : 's'}`)
+    }
+    toast.show({
+      type: 'positive',
+      message: parts.length ? `${parts.join(' and ')} applied` : 'Filters cleared',
+    })
+  }
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   // Which actions were promoted out of the puzzle menu -- a layout choice,
   // so it outlives the tile that was open when it was made.
@@ -116,10 +139,24 @@ export function PivotActions() {
   }
 
   const TASK_TITLES = {
-    copy: 'Copy',
-    adjust: 'Adjust',
-    apply: 'Apply',
+    ...BULK_EDIT_TITLES,
     manage: 'Manage Value Filters',
+  }
+
+  const isBulk = task === 'copy' || task === 'adjust' || task === 'apply'
+
+  const submitBulk = () => {
+    const { rows } = bulkRef.current?.collect() ?? { rows: [] }
+    if (!rows.length) {
+      toast.show({ type: 'warning', message: 'Add a measure before submitting' })
+      // Nothing to submit is not a reason to close the form.
+      return false
+    }
+    toast.show({
+      type: 'positive',
+      message: `${rows.length} measure${rows.length === 1 ? '' : 's'} updated`,
+    })
+    return true
   }
 
   const openTask = (item) => {
@@ -227,40 +264,79 @@ export function PivotActions() {
         size="lg"
         title={TASK_TITLES[task] ?? ''}
         isOpen={task != null}
-        onOpenChange={(open) => !open && setTask(null)}
-        /* The filter builder brings its own footer, because Save has to know
-           whether the conditions are complete. The other tasks use the
-           window's. */
-        hasFooter={task !== 'manage'}
+        onOpenChange={(open) => {
+          if (open) return
+          setTask(null)
+          setFilterSummary('')
+        }}
         /* The window re-applies initial focus on every render, which pulls the
            caret out of whatever is being typed into. */
         initialFocus={task === 'manage' ? 'none' : undefined}
+        /* Save and Cancel are the window's own footer actions rather than a
+           footer the builder draws for itself -- one set of buttons in the
+           place every other window puts them. The builder hands back what it
+           built through its ref. */
+        primaryAction={
+          task === 'manage'
+            ? { label: 'Save', onClick: saveFilters }
+            : isBulk
+              ? { label: 'Submit', onClick: submitBulk }
+              : undefined
+        }
+        /* Reset before Cancel: it is the recoverable one, and putting the
+           discard-everything action closest to Submit is how a form gets
+           cancelled by accident. */
+        secondaryActions={
+          task === 'manage'
+            ? [{ label: 'Cancel' }]
+            : isBulk
+              ? [
+                  {
+                    label: 'Reset',
+                    onClick: () => {
+                      bulkRef.current?.reset()
+                      return false
+                    },
+                  },
+                  { label: 'Cancel' },
+                ]
+              : undefined
+        }
+        /* The sentence sits beside the buttons it describes, so it is read on
+           the way to pressing Save rather than somewhere above it. */
+        footerLeft={
+          (task === 'manage' || isBulk) && filterSummary ? (
+            <span className="vfilter__status">{filterSummary}</span>
+          ) : undefined
+        }
       >
         {task === 'manage' ? (
-          <ValueFilterBuilder
-            onCancel={() => setTask(null)}
-            onSave={({ groups, ranks }) => {
-              /* The builder hands back only what was finished -- incomplete
-                 rows are dropped there rather than counted here. */
-              const conditions = groups.reduce((total, { rows }) => total + rows.length, 0)
-              setAppliedFilters(conditions + ranks.length)
-              const parts = []
-              if (conditions) {
-                parts.push(`${conditions} value filter${conditions === 1 ? '' : 's'}`)
-              }
-              if (ranks.length) {
-                parts.push(`${ranks.length} top/bottom rule${ranks.length === 1 ? '' : 's'}`)
-              }
-              toast.show({
-                type: 'positive',
-                message: parts.length ? `${parts.join(' and ')} applied` : 'Filters cleared',
-              })
-              setTask(null)
-            }}
+          <ValueFilterBuilder ref={builderRef} onSummaryChange={setFilterSummary} />
+        ) : isBulk ? (
+          <BulkEditForm
+            ref={bulkRef}
+            mode={task}
+            onPickScope={setScopePicker}
+            onSummaryChange={setFilterSummary}
           />
         ) : (
           <p className="panel-placeholder">{TASK_TITLES[task]} content goes here.</p>
         )}
+      </ArvoWindow>
+
+      {/* The member picker, a sibling of the task window rather than a child.
+          A second window rendered inside the first is torn down with it when
+          the overlay stack reshuffles -- the same trip the revoke dialog took
+          in the share flow. */}
+      <ArvoWindow
+        size="md"
+        title={scopePicker ? `Select ${scopePicker.toLowerCase()}` : ''}
+        isOpen={scopePicker != null}
+        onOpenChange={(open) => !open && setScopePicker(null)}
+        primaryAction={{ label: 'Add' }}
+        secondaryActions={[{ label: 'Cancel' }]}
+      >
+        <p className="panel-placeholder">{scopePicker} picker goes here.</p>
       </ArvoWindow>
 
       {/* Always present, and never pinnable itself -- it is the way back to
