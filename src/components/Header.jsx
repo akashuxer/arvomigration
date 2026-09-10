@@ -3,7 +3,7 @@ import {
   ArvoAvatar,
   ArvoDropdownIconButton,
   ArvoIconButton,
-  ArvoRichTooltip,
+  ArvoTooltip,
 } from '@arvo/react'
 import NotificationsPopover from './NotificationsPopover'
 import CreatePostWindow from './CreatePostWindow'
@@ -33,6 +33,12 @@ const IDENTITY = {
   name: 'Kayle Sank',
   email: 'kayle.sink@o9solutions.com',
 }
+
+const IDENTITY_TOOLTIP = [
+  `Tenant: ${IDENTITY.tenant}`,
+  IDENTITY.name,
+  IDENTITY.email,
+].join('\n')
 
 // The View Tabs: the top-level report views this workspace offers.
 export const VIEW_TABS = [
@@ -186,28 +192,20 @@ export default function Header({ activeTab, onTabChange, onBack, canGoBack = fal
             so it is left alone here. */}
         <ArvoAvatar variant="novai" size="md" tooltip="Ask Nova AI" isInteractive />
         {/* One trigger across both, so hovering either the tenant or the
-            avatar answers the whole question. */}
-        <span className="identity" ref={identityRef}>
-          <span className="tenant-name">{IDENTITY.tenant}</span>
-          <ArvoAvatar variant="initials" name={IDENTITY.name} size="md" />
-        </span>
-
-        <ArvoRichTooltip
-          triggerRef={identityRef}
-          trigger="hover"
-          placement="bottom-end"
-          title={`Tenant: ${IDENTITY.tenant}`}
-          /* Name and address on their own lines, as bodyContent rather than one
-             message string: the inline adapter renders a message as a single
-             run, and a name run together with an email is the one thing this
-             tooltip exists to keep apart. */
-          bodyContent={
-            <span className="identity__lines">
-              <span className="identity__name">{IDENTITY.name}</span>
-              <span className="identity__email">{IDENTITY.email}</span>
-            </span>
-          }
-        />
+            avatar answers the whole question.
+            *
+            * ArvoTooltip, not the rich one: this is a description of what you
+            * are looking at, which is what the plain dark bubble is for. The
+            * rich tooltip is a light panel built to carry titles, badges and
+            * actions, none of which a name and an address need. Its content is
+            * a string, so the three lines are newlines and the surface is told
+            * to honour them. */}
+        <ArvoTooltip content={IDENTITY_TOOLTIP} placement="bottom-end">
+          <span className="identity" ref={identityRef}>
+            <span className="tenant-name">{IDENTITY.tenant}</span>
+            <ArvoAvatar variant="initials" name={IDENTITY.name} size="md" />
+          </span>
+        </ArvoTooltip>
       </div>
     </header>
   )

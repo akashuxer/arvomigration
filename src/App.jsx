@@ -23,10 +23,17 @@ function AppShell() {
     { label: 'Version Name', value: 'Current Working View' },
   ]
 
+  /* A chip names what is selected, and the badge says how many.
+   *
+   * "(All)" told you the filter existed and nothing else -- it is the value a
+   * filter has when it is not filtering, which is exactly the case where the
+   * chip has least to say. Naming the first member and counting the rest means
+   * the bar reads as a description of the view rather than as a list of
+   * dimensions. */
   const CHANNEL_CHIPS = [
     { label: 'Version Name', value: 'CurrentWorkingView' },
-    { label: 'ProductGroup3', value: '(All)', count: 9 },
-    { label: 'Account', value: '(All)', count: 14 },
+    { label: 'ProductGroup3', value: 'Beverages', count: 9 },
+    { label: 'Account', value: 'Customer-A06', count: 14 },
     { label: 'Time', value: 'CY' },
   ]
 

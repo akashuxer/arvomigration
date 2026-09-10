@@ -3,6 +3,7 @@ import usePersistentState from '../usePersistentState'
 import ShareFavoriteWindow from './ShareFavoriteWindow'
 import {
   ArvoAlertDialog,
+  ArvoBadge,
   ArvoButton,
   ArvoDropdownButton,
   ArvoIconButton,
@@ -291,11 +292,22 @@ export default function FilterBar({ chips: allChips = [], isV2 = false }) {
       <div className="filter-chips">
         {chips.map(({ label, value, count }) => (
           <div className="filter-chip" key={label}>
-            <span className="filter-label">{label}</span>
-            <span className="filter-value">
-              {value}
-              {count != null && <span className="filter-count">{count}</span>}
-            </span>
+            {/* The colon does the work a gap was doing: it says the second word
+                belongs to the first, which is what turns two runs of text into
+                one statement. */}
+            <span className="filter-label">{label}:</span>
+            <span className="filter-value">{value}</span>
+            {count != null && (
+              /* A badge, not a bordered run of text -- the count is a quantity
+                 attached to the value, which is the one thing a badge is for. */
+              <ArvoBadge
+                message={String(count)}
+                semanticType="neutral"
+                appearance="primary"
+                hasBadgeIcon={false}
+                size="sm"
+              />
+            )}
           </div>
         ))}
 
