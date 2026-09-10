@@ -1,0 +1,2589 @@
+/* App shell layout only.
+ *
+ * Design-system concerns are NOT redefined here: the o9con @font-face, the
+ * .o9con icon classes, and the .arvo-btn / .arvo-icon-btn component styles all
+ * come from @arvo/assets and @arvo/styles (imported in main.jsx). Nothing in
+ * this file may restate them.
+ *
+ * --arvo-* colour tokens come from @arvo/tokens. Arvo's spacing/border tokens
+ * are SCSS-only ($arvo-space-8) and compile away, so they cannot be referenced
+ * as CSS custom properties; the literal 8px / 6px / 4px values below are the
+ * documented resolved values from the pivot guidelines.
+ */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: var(--o9-font-family, 'o9 Sans', system-ui, sans-serif);
+  font-size: 12px;
+  color: var(--arvo-color-t-primary, #010101);
+  background-color: var(--arvo-color-s-layer-02, #f2f2f2);
+}
+
+/* Shell grid. The seams around the rails and header are 4px; only the stacked
+ * report layers are separated by 12px:
+ *
+ *   [rail] 4 [header]
+ *   [rail] 4 [filter]    4 [launchbar]
+ *          12 (filter -> report)
+ *   [rail] 4 [report 1]  4 [launchbar]
+ *          12 (report -> report)
+ *   [rail] 4 [report n]  4 [launchbar]
+ *
+ * The rail is flush to the window edge (no gap on its left) and runs unbroken
+ * from the logo to the bottom. */
+.app-container {
+  /* Single source for the shell seam: the hidden rails cancel exactly this
+   * much with a negative margin, so the two can never drift apart. */
+  --shell-seam: 4px;
+
+  /* Arvo motion tokens. The design system ships these as SCSS
+   * ($arvo-duration-*, $arvo-ease-*) with no generated custom properties, so
+   * they are mirrored here once under the same names rather than written out
+   * as literals at each call site.
+   *
+   *   slow + standard    -> $arvo-motion-transition-expand (docking the panel:
+   *                         a layout expand/collapse)
+   *   medium + emphasized -> $arvo-motion-layout-shift (an indicator moving
+   *                         between two targets) */
+  --arvo-duration-fast: 150ms;
+  --arvo-duration-medium: 220ms;
+  --arvo-duration-slow: 300ms;
+  --arvo-ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+  --arvo-ease-emphasized: cubic-bezier(0.2, 0, 0, 1);
+
+  /* Docked launchbar panel. Shared by the clipping slot and the panel inside
+   * it, which must agree or the panel reflows mid-animation. */
+  --panel-width: 320px;
+
+  display: flex;
+  height: 100%;
+  gap: var(--shell-seam);
+  overflow: hidden;
+}
+
+.app-main {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  gap: 4px;
+}
+
+.app-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  gap: var(--shell-seam);
+}
+
+/* The panel docks by opening a slot in the shell rather than floating over it.
+ * The slot animates its width while clipping the panel inside, so the panel
+ * appears to slide out from behind the launchbar as the space appears.
+ *
+ * It stays mounted at zero width when closed: a conditionally rendered panel
+ * unmounts the instant it closes, which leaves nothing to animate out.
+ *
+ * The negative margin cancels one of the two flex gaps the empty slot would
+ * otherwise contribute to the row. */
+.panel-dock {
+  overflow: hidden;
+  width: 0;
+  margin-right: calc(-1 * var(--shell-seam));
+  transition:
+    width var(--arvo-duration-slow) var(--arvo-ease-standard),
+    margin-right var(--arvo-duration-slow) var(--arvo-ease-standard);
+}
+
+/* The panel sits a fixed 4px off the rail, which is the seam width in v1 but
+ * not in v2, where seams are hairlines. A flex `gap` is uniform across the row
+ * and cannot be varied per item, so the slot tops up the difference itself and
+ * the spacing holds in both layouts. */
+.panel-dock--open {
+  width: var(--panel-width);
+  margin-right: calc(4px - var(--shell-seam));
+}
+
+/* Fixed width inside the clipping slot: without it the panel would reflow
+ * narrower on every frame of the animation and its header would rewrap. */
+.panel-dock > .arvo-pnl {
+  width: var(--panel-width);
+  height: 100%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel-dock {
+    transition: none;
+  }
+}
+
+.panel-placeholder {
+  margin: 0;
+  color: var(--arvo-color-t-secondary, #303030);
+}
+
+.fav-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Excel-style selection ring on the active cell.
+ *
+ * An inset box-shadow rather than a border or outline: a border would change
+ * the cell's box and shift every neighbour by 2px as the selection moved, and
+ * an outline would be clipped by the pivot's scroll container at the frozen
+ * edge. A shadow paints inside the existing box and costs no layout.
+ *
+ * Driven by a class rather than :focus -- see usePivotCellFocus for why.
+ *
+ * b-theme-focus is the platform's focus colour: which cell you are on is UI
+ * state, not data, so it stays out of the viz palette. */
+.pivot__table td.pivot__cell--selected,
+.pivot__table th.pivot__cell--selected {
+  outline: none;
+  position: relative;
+  z-index: 2;
+  box-shadow: inset 0 0 0 2px var(--arvo-color-b-theme-focus, #2f77f0);
+}
+
+.pivot__table td.pivot__cell--selected:focus,
+.pivot__table th.pivot__cell--selected:focus {
+  outline: none;
+}
+
+/* The fill handle in the bottom-right corner, as a spreadsheet has. */
+/* The fill handle, tucked inside the cell's bottom-right corner.
+ *
+ * Fully within the cell box, not straddling the corner. Hanging it outside put
+ * it on top of the neighbouring cell's value, and because the ring travels with
+ * the selection it would obscure a different number on every move. */
+.pivot__table td.pivot__cell--selected::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 6px;
+  height: 6px;
+  background-color: var(--arvo-color-b-theme-focus, #2f77f0);
+  /* Above the ring: the inset shadow paints over the cell's own corner, so a
+   * handle at the same level was half-hidden under it. */
+  z-index: 1;
+}
+
+/* The frozen columns draw their divider as an inset shadow, which the ring
+ * above would replace outright -- restore it alongside so the frozen edge
+ * survives selecting a cell in it. */
+.app-container--v2 .pivot__table th.pivot__cell--attr.pivot__cell--selected,
+.app-container--v2 .pivot__table td.pivot__cell--attr.pivot__cell--selected {
+  box-shadow:
+    inset 0 0 0 2px var(--arvo-color-b-theme-focus, #2f77f0),
+    inset -1px 0 0 var(--arvo-color-b-divider, #e5e5e5);
+}
+
+/* The browser's own focus ring, suppressed where we draw our own.
+ *
+ * These elements are focused programmatically -- a pivot cell on click, the
+ * popover when it opens -- and Chrome then paints its default :focus-visible
+ * ring in the OS accent colour, which is why a stray orange rounded rectangle
+ * appeared around a selected cell and around the whole Favorites popover. The
+ * theme's own indicator is the black ring below; this removes the competing
+ * one rather than restyling it. */
+.pivot__table td:focus,
+.pivot__table th:focus,
+.pivot__table td:focus-visible,
+.pivot__table th:focus-visible,
+.arvo-popover:focus,
+.arvo-popover:focus-visible,
+.arvo-pnl:focus,
+.arvo-pnl:focus-visible,
+.arvo-context-menu:focus,
+.arvo-context-menu:focus-visible {
+  outline: none;
+}
+
+/* Workaround: make the context menu visible while it is animating in.
+ *
+ * Arvo styles the panel `display: none` and reveals it with an `.open` class,
+ * but the ContextMenu surface never adds that class in this build. It does run
+ * the enter/exit sequence -- the panel picks up `arvo-fade arvo-enter-active
+ * arvo-enter-to` -- so the menu was mounting, animating and tearing down
+ * entirely invisibly, which is why right-click appeared to do nothing.
+ *
+ * Keying off the transition classes the engine does apply restores it without
+ * forcing the panel visible when closed. Remove this once ContextMenu sets
+ * `.open` itself; the `.open` selector is kept alongside so this rule does not
+ * have to be found and changed at that point. */
+.arvo-context-menu.open,
+.arvo-context-menu.is-open {
+  display: flex;
+}
+
+/* Active state for an icon button that opens a popover.
+ *
+ * Arvo paints the pressed fill off a `.open` class, which its own wrapper
+ * components (dd-btn, split-btn) add to themselves. A plain ArvoIconButton used
+ * as a popover trigger never gets that class -- so Favorites, Share and
+ * Notifications stayed visually unpressed while their popover was open, unlike
+ * the dropdown buttons beside them.
+ *
+ * The popover does set `aria-expanded` on its trigger, so that attribute is the
+ * hook. The declarations are Arvo's own active tokens, copied from the button's
+ * `.open` rule rather than picked by eye, so the two states cannot diverge. */
+.arvo-icon-btn[aria-expanded='true']:not(:disabled):not(.is-disabled) {
+  --arvo-btn-bg-color: var(--arvo-color-s-theme-active-2);
+  --arvo-btn-text-color: var(--arvo-color-t-theme-active);
+  --arvo-btn-icon-color: var(--arvo-color-i-theme-active);
+}
+
+/* Notifications.
+ *
+ * Row geometry follows the spec: 66px tall, 8px/16px padding, 8px between the
+ * icon, the content and the trailing action. Height is a floor rather than a
+ * fixed value -- a two-line message must be allowed to grow the row instead of
+ * being clipped, and the long error message in the list does exactly that.
+ *
+ * The body is content-sized up to a ceiling and scrolls past it, so a short
+ * list makes a short popover. The empty state gets a floor instead, so the
+ * illustration is not squeezed into a strip.
+ */
+.notif-list {
+  /* Taller than before. Six rows was a conservative ceiling for one-line
+     messages; with an avatar column and two-line sentences the list was
+     scrolling almost immediately, and a notification surface that always
+     scrolls is one you never see the end of. */
+  max-height: 560px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.notif-group__items {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Day heading. Sticky, so the bucket you are reading stays named however far
+ * the history scrolls; quiet, because it is a signpost and not content. */
+.notif-group__label {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  margin: 0;
+  padding: 10px 16px 6px;
+  font-size: 11px;
+  font-weight: var(--arvo-medium, 500);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--arvo-color-t-tertiary, #757575);
+  background-color: var(--arvo-color-s-layer-01, #fff);
+  border-bottom: 1px solid var(--arvo-color-b-divider, #e5e5e5);
+}
+
+.notif {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  /* 12px, not 8: the leading slot is now a 32px avatar rather than a 20px
+     glyph, and the tighter gap let the face crowd the sentence. */
+  gap: 12px;
+  min-height: 66px;
+  padding: 8px 16px;
+  cursor: pointer;
+  transition: background-color var(--arvo-duration-fast, 120ms)
+    var(--arvo-ease-standard, ease);
+}
+
+.notif + .notif {
+  border-top: 1px solid var(--arvo-color-b-divider, #e5e5e5);
+}
+
+.notif:hover {
+  background-color: var(--arvo-color-s-layer-02, #f5f5f5);
+}
+
+/* Keyboard only. The row is clickable, so a ring on every pointer press would
+ * flash on each read; the modality flag is set on the document by App. */
+:root[data-input='keyboard'] .notif:focus-visible {
+  outline: 1.5px solid var(--arvo-color-b-theme-active, #010101);
+  outline-offset: -2px;
+}
+
+/* The unread wedge. A corner triangle rather than a tinted row: it says "not
+ * yet seen" without competing with the semantic icon that says what kind of
+ * message this is. */
+.notif__flag {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 0;
+  border-top: 8px solid var(--arvo-color-i-warning-static, #f98131);
+  border-right: 8px solid transparent;
+}
+
+/* The platform's own messages get a glyph in a tinted disc, sized to the same
+ * 32px column the avatars occupy so every message line starts at one x. */
+.notif__icon {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  font-size: 15px;
+  background-color: var(--arvo-color-s-layer-02, #f5f5f5);
+}
+
+.notif__icon--info { color: var(--arvo-color-i-info, #2f77f0); }
+.notif__icon--warning { color: var(--arvo-color-i-warning, #d96a09); }
+.notif__icon--negative { color: var(--arvo-color-i-negative, #c11429); }
+.notif__icon--positive { color: var(--arvo-color-i-positive, #009a26); }
+
+.notif__content {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  /* 4px between the sentence and its timestamp: enough that the two read as
+     separate lines rather than a wrapped one, tight enough that they stay a
+     single block. */
+  gap: 4px;
+  min-width: 0;
+  /* Optically centres a one-line row against the 32px avatar without pushing
+     two-line rows off balance. */
+  padding-top: 2px;
+}
+
+/* Avatar plus the type stamp that overlays it. Fixed size, so the message
+ * column starts in the same place whether the row has a face or a glyph. */
+.notif__avatar {
+  position: relative;
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+}
+
+/* The small overlay that says what kind of message it is. It sits on the
+ * avatar rather than beside it, so "who" and "what" cost one slot between them
+ * instead of two -- and the ring keeps it legible over any avatar colour. */
+.notif__stamp {
+  position: absolute;
+  right: -3px;
+  bottom: -3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 15px;
+  height: 15px;
+  font-size: 9px;
+  background-color: var(--arvo-color-s-layer-01, #fff);
+  box-shadow: 0 0 0 1.5px var(--arvo-color-s-layer-01, #fff);
+}
+
+/* Square, like every other surface in this product. The avatar ships round; a
+ * circle in a list of hard-edged rows, chips and tiles is the one soft shape on
+ * the screen, so the corners are squared here rather than left to argue with
+ * the rest of the layout. */
+.notif__avatar .arvo-avt,
+.notif__avatar .arvo-avt img {
+  border-radius: 0;
+}
+
+.notif__stamp--info { color: var(--arvo-color-i-info, #2f77f0); }
+.notif__stamp--warning { color: var(--arvo-color-i-warning, #d96a09); }
+.notif__stamp--negative { color: var(--arvo-color-i-negative, #c11429); }
+.notif__stamp--positive { color: var(--arvo-color-i-positive, #009a26); }
+
+.notif__message {
+  color: var(--arvo-color-t-primary, #010101);
+  font-size: 14px;
+  line-height: 20px;
+  /* Long messages stop at three lines. The full text is on the row's title, and
+     an unbounded row would let one error push everything else out of view. */
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+
+/* The named thing in the sentence -- the view, the file, the scenario -- so the
+   subject of a notification is findable without reading the whole line. */
+.notif__subject {
+  font-weight: var(--arvo-medium, 500);
+}
+
+.notif__time {
+  color: var(--arvo-color-t-secondary, #616161);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+/* The trailing cluster: the row's own action, then dismiss. Reserved rather
+   than revealed as a block, so the message column ends at the same place on
+   every row and nothing shifts as the pointer travels down the list. */
+.notif__actions {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 2px;
+}
+
+/* Dismiss is present for every row but only visible under the pointer or
+   keyboard focus -- always-on close buttons turn a list into a row of X's, and
+   the control is one nobody goes looking for until they want it. */
+.notif__dismiss {
+  opacity: 0;
+  transition: opacity var(--arvo-duration-fast, 120ms) var(--arvo-ease-standard, ease);
+}
+
+.notif:hover .notif__dismiss,
+.notif:focus-visible .notif__dismiss,
+.notif__dismiss:focus-within {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .notif,
+  .notif__dismiss {
+    transition: none;
+  }
+}
+
+/* Unread reads slightly heavier than read, which recedes to secondary. */
+.notif--unread .notif__message {
+  color: var(--arvo-color-t-primary, #010101);
+}
+
+.notif:not(.notif--unread) .notif__message {
+  color: var(--arvo-color-t-secondary, #616161);
+}
+
+/* Room for the illustration to sit in -- the empty body gets a floor where the
+ * list gets a ceiling, so "no notifications" is a composed state rather than a
+ * strip of text where six rows used to be. */
+.arvo-popover .arvo-empty {
+  min-height: 240px;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Filter and the reports below it are separated by 16px, unlike the 4px seams
+ * around the rails and header. */
+.app-content {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  gap: 16px;
+}
+
+/* ---------------------------------------------------------------- header -- */
+
+/* No bottom border: the 4px canvas gap is the separator between layers. */
+.top-header {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  height: 56px;
+  flex-shrink: 0;
+  padding: 0 8px;
+  background-color: var(--arvo-color-s-layer-01, #fff);
+}
+
+/* Shrinks before the tabs do. The workspace name is recoverable -- it
+ * truncates and the full text stays in the title -- where a tab strip squeezed
+ * to nothing takes the primary navigation off screen entirely. */
+.header-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 1 auto;
+  min-width: 0;
+  padding-right: 8px;
+  border-right: 1px solid var(--arvo-color-b-divider, #e5e5e5);
+}
+
+/* 32x32 white block on the dark rail.
+ *
+ * The glyph uses i-primary, NOT i-inverse: under this theme both
+ * s-white-static and i-inverse resolve to #ffffff, so an inverse glyph on a
+ * white block would be invisible. i-primary (#010101) is the icon token that
+ * pairs with a light surface. */
+.brand-mark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  margin: 10px 0;
+  font-size: 26px;
+  background-color: var(--arvo-color-s-white-static, #ffffff);
+  color: var(--arvo-color-i-primary, #010101);
+}
+
+.workspace-name {
+  font-size: 20px;
+  font-weight: 500;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--arvo-color-t-primary, #010101);
+}
+
+/* The tab strip keeps a floor. Everything around it is allowed to give way
+ * first, so narrowing the window shrinks the tabs rather than deleting them. */
+.view-tabs {
+  flex: 1 1 auto;
+  min-width: 96px;
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  overflow: hidden;
+  margin-left: 8px;
+}
+
+/* The active tab's fill and top border, as one block that slides between tabs.
+ * Sized and placed by inline width/transform, which Header measures off the
+ * active button. Transforms and width animate on the compositor; painting a moving
+ * background on each button instead would just cross-fade. */
+.tab-indicator {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  /* Width and transform come from Header as inline styles -- see the note
+   * there on why they are not custom properties. */
+  width: 0;
+  background-color: var(--arvo-color-s-layer-02, #f2f2f2);
+  border-top: 2px solid var(--arvo-color-b-theme-active, #010101);
+  transition:
+    transform var(--arvo-duration-medium) var(--arvo-ease-emphasized),
+    width var(--arvo-duration-medium) var(--arvo-ease-emphasized);
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tab-indicator {
+    transition: none;
+  }
+}
+
+/* Figma: inactive tabs sit on white and are separated by hairline dividers; the
+ * active tab is a filled grey block with medium-weight text and no divider. */
+.tab-button {
+  position: relative;
+  /* Above the sliding block, so the label is never painted over. */
+  z-index: 1;
+  /* Shrink before the row overflows, the way browser tabs do: give up width
+   * evenly and ellipsis the label rather than pushing the last tab out of
+   * sight. The max stops two tabs from sprawling across a wide header. */
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 0 20px;
+  border: none;
+  /* border-2 is 2px, carried by .tab-indicator. Kept transparent here so every
+   * tab reserves the same 2px and activating one does not shift the row.
+   * Arvo's border tokens are SCSS-only -- there is no --arvo-border-2 custom
+   * property to reference. */
+  border-top: 2px solid transparent;
+  background: none;
+  transition: color 0.28s ease;
+  font: inherit;
+  font-size: 14px;
+  white-space: nowrap;
+  cursor: pointer;
+  color: var(--arvo-color-t-secondary, #303030);
+}
+
+.tab-button + .tab-button::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 1px;
+  height: 20px;
+  background-color: var(--arvo-color-b-divider, #e5e5e5);
+}
+
+/* Active is excluded: the button paints above the indicator, so a hover fill on
+ * the active tab would cover the indicator's 2px top border. */
+.tab-button:not(.active):hover {
+  background-color: var(--arvo-color-s-layer-02, #f2f2f2);
+}
+
+/* Fill and top border live on .tab-indicator; only the text treatment stays
+ * with the button itself. */
+.tab-button.active {
+  font-weight: 500;
+  color: var(--arvo-color-t-primary, #010101);
+}
+
+/* No divider on either side of the active block. */
+.tab-button.active::before,
+.tab-button.active + .tab-button::before {
+  display: none;
+}
+
+.action-icons {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.user-context {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+/* The tenant chip is the first thing to go: it is the least navigational text
+ * in the header, and the avatar beside it still identifies the tenant. */
+@media (max-width: 900px) {
+  .tenant-name {
+    display: none;
+  }
+}
+
+.tenant-name {
+  padding: 6px 12px;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--arvo-color-t-secondary, #303030);
+  background-color: var(--arvo-color-s-layer-02, #f2f2f2);
+}
+
+.user-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #fff;
+  background-color: var(--arvo-color-s-theme, #3d6dcc);
+}
+
+/* ------------------------------------------------------------ body regions - */
+
+/* Rails are 52px, holding 40px (Arvo lg) icon buttons with 24px glyphs. */
+.left-nav,
+.right-launchbar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: 52px;
+  flex-shrink: 0;
+  padding: 8px 0;
+  background-color: var(--arvo-color-s-layer-01, #fff);
+}
+
+/* Left rail carries the theme surface and runs the full height of the shell,
+ * logo included. Its buttons use the primary variant, so their rest/hover/
+ * active colours already come from the theme ramp (s-theme -> s-theme-hover-1)
+ * and need no local overrides.
+ *
+ * border-3 is 1.5px. Arvo's border tokens are SCSS-only ($arvo-border-3) and
+ * compile away, so there is no --arvo-border-3 custom property to reference;
+ * the literal below is that token's documented value. */
+.left-nav {
+  background-color: var(--arvo-color-s-theme, #010101);
+  border-left: 1.5px solid var(--arvo-color-b-theme, #010101);
+  padding-top: 0;
+}
+
+.left-nav .nav-divider {
+  background-color: rgba(255, 255, 255, 0.24);
+}
+
+/* Collapse mirrors the launchbar: the rail shrinks to a 4px strip and its
+ * toggle moves outside, overhanging the content on the opposite side. */
+.left-nav {
+  position: relative;
+  transition: width 0.2s ease, opacity 0.2s ease, margin 0.2s ease,
+    padding 0.2s ease;
+}
+
+/* Collapsed rails keep their 4px slot as a spacer but drop the visible surface
+ * and border, so only the toggle reads -- no leftover strip along the edge. */
+.left-nav--collapsed,
+.right-launchbar--collapsed {
+  background-color: transparent;
+  border: none;
+}
+
+.left-nav--collapsed {
+  width: 4px;
+  padding: 0;
+  overflow: visible;
+}
+
+.left-nav--collapsed .nav-toggle {
+  position: absolute;
+  left: 100%;
+  bottom: 8px;
+}
+
+.nav-toggle .arvo-btn__ico {
+  transition: transform 0.15s ease;
+}
+
+.left-nav--collapsed .nav-toggle .arvo-btn__ico {
+  transform: rotate(180deg);
+}
+
+.nav-divider {
+  width: 32px;
+  height: 1px;
+  margin: 4px 0;
+  background-color: var(--arvo-color-b-divider, #e5e5e5);
+}
+
+.nav-spacer,
+.launchbar-spacer {
+  flex: 1;
+}
+
+/* Collapsed launchbar shrinks to a 4px strip and its toggle moves outside the
+ * strip, overhanging the content so it stays reachable. The same chevron is
+ * flipped rather than swapped for a different icon. */
+.right-launchbar {
+  position: relative;
+  transition: width 0.2s ease, opacity 0.2s ease, margin 0.2s ease,
+    padding 0.2s ease;
+}
+
+.right-launchbar--collapsed {
+  width: 4px;
+  padding: 0;
+  overflow: visible;
+}
+
+.right-launchbar--collapsed .launchbar-toggle {
+  position: absolute;
+  right: 100%;
+  bottom: 8px;
+}
+
+.launchbar-toggle .arvo-btn__ico {
+  transition: transform 0.15s ease;
+}
+
+/* --- launchbar active indicator --- */
+
+.launchbar-tools {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  align-self: stretch;
+}
+
+/* Carries both halves of the active treatment: the accent edge on the rail's
+ * left side and the tertiary-button fill behind the icon. Spans the rail's full
+ * width so the edge sits on the rail itself, not around the button. */
+.launchbar-indicator {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: var(--tool-h);
+  transform: translateY(var(--tool-y));
+  background-color: var(--arvo-color-s-layer-02, #f2f2f2);
+  /* border-2 is 2px; Arvo's border tokens are SCSS-only, so the literal stands
+   * in for $arvo-border-2 as it does on the view tabs. */
+  border-left: 2px solid var(--arvo-color-b-theme-active, #010101);
+  transition:
+    transform var(--arvo-duration-medium) var(--arvo-ease-emphasized),
+    height var(--arvo-duration-medium) var(--arvo-ease-emphasized);
+  pointer-events: none;
+}
+
+/* Menu rows mark their active row with `.focused` on hover as well as on arrow
+ * keys, and Arvo outlines that class. Pointer users get the row highlight
+ * without the keyboard ring. */
+:root[data-input='pointer'] .arvo-menu-item.focused {
+  outline: none;
+}
+
+/* Above the indicator, so the glyph is never painted over. */
+.launchbar-tool {
+  position: relative;
+  z-index: 1;
+}
+
+/* The indicator supplies the active fill, so the button must not paint its own
+ * on top of it -- that would hide the accent edge behind it. */
+.launchbar-tool--active,
+.launchbar-tool--active:hover {
+  background-color: transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .launchbar-indicator {
+    transition: none;
+  }
+}
+
+.right-launchbar--collapsed .launchbar-toggle .arvo-btn__ico {
+  transform: rotate(180deg);
+}
+
+/* Focus mode (Shift+F). The rails stay mounted and animate to zero width so the
+ * transition can run; the negative margin swallows the shell seam a zero-width
+ * flex item would otherwise leave behind.
+ *
+ * These rules sit last on purpose: a rail can be collapsed AND hidden at once,
+ * and hidden has to win over the 4px collapsed strip. */
+.left-nav--hidden,
+.right-launchbar--hidden {
+  width: 0;
+  padding-left: 0;
+  padding-right: 0;
+  border: none;
+  opacity: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.left-nav--hidden {
+  margin-right: calc(var(--shell-seam) * -1);
+}
+
+.right-launchbar--hidden {
+  margin-left: calc(var(--shell-seam) * -1);
+}
+
+
+/* ------------------------------------------------------------- filter bar -- */
+
+/* Sits on the canvas, not on a surface of its own.
+ *
+ * Every report below is a white layer; a white filter bar read as one more of
+ * them -- another card, filtering itself. Dropping it onto the grey base makes
+ * it chrome rather than content, which is what says these filters govern
+ * everything on the canvas below. */
+.filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 48px;
+  flex-shrink: 0;
+  padding: 0 8px;
+  background-color: transparent;
+}
+
+/* Short inline rule shared by the filter bar and the header, so the separator
+ * before the tenant chip matches the one after Select Filter Set rather than
+ * running the full height of the bar. */
+.filter-divider,
+.header-divider {
+  width: 1px;
+  height: 24px;
+  flex-shrink: 0;
+  /* .top-header is align-items: stretch, and a flex item with a definite
+   * cross size falls back to flex-start there -- which top-aligns the rule
+   * instead of centring it. Centre it explicitly. */
+  align-self: center;
+  background-color: var(--arvo-color-b-divider, #e5e5e5);
+}
+
+.filter-chips {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* Figma puts the grey fill on the VALUE only -- the label is plain text sitting
+ * on the bar, not inside the chip. */
+.filter-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.filter-label {
+  font-size: 14px;
+  color: var(--arvo-color-t-secondary, #303030);
+}
+
+.filter-value {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px;
+  font-size: 14px;
+  color: var(--arvo-color-t-primary, #010101);
+  /* s-layer-01, not -02: the bar now sits on the canvas, which IS layer-02, so
+   * a layer-02 pill was the same colour as its own background and vanished. */
+  background-color: var(--arvo-color-s-layer-01, #fff);
+}
+
+/* Member count behind an "(All)" selection -- secondary to the value it
+ * qualifies, separated by a hairline the way the source report shows it. */
+.filter-count {
+  padding-left: 8px;
+  border-left: 1px solid var(--arvo-color-b-divider, #e5e5e5);
+  color: var(--arvo-color-t-tertiary, #4c4c4c);
+}
+
+.filter-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+/* ----------------------------------------------------------- content area -- */
+
+/* The reports sit 16px in from the rail and the launchbar, while the header and
+ * filter rows stay at the shell's 4px seam. The rail is a single full-height
+ * column, so that difference cannot come from the container gap -- the balance
+ * is added as padding on the report area itself.
+ *
+ * The two sides need different padding. This element scrolls, and
+ * `scrollbar-gutter: stable` permanently reserves ~8px at the inline-end edge,
+ * which already counts toward the right-hand gap:
+ *
+ *   left  = 4px seam + 12px padding            = 16px
+ *   right = 4px seam + 8px gutter + 4px padding = 16px
+ */
+.content-area {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+  padding: 0 4px 0 12px;
+}
+
+.report-tile {
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+  background-color: var(--arvo-color-s-layer-01, #fff);
+}
+
+/* An author `display` beats the UA stylesheet's [hidden] rule, so restore it
+ * explicitly -- otherwise the collapsed report would still take up space. */
+.report-tile[hidden] {
+  display: none;
+}
+
+/* The expanded report takes the whole area; its sibling is hidden outright. */
+.report-tile--expanded {
+  flex: 1;
+  min-height: 0;
+}
+
+.report-tile--expanded .tile-body,
+.report-tile--expanded .pivot {
+  flex: 1;
+  min-height: 0;
+  height: auto;
+}
+
+.tile-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+/* Expand control is pinned to the tile's top-right corner rather than sitting
+ * in the header flow, so it costs no layout space and cannot squeeze the title
+ * or the tile's own action buttons. Faded rather than removed, so it stays
+ * reachable by keyboard. */
+.report-tile {
+  position: relative;
+}
+
+.tile-expand {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 2;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.report-tile:hover .tile-expand,
+.report-tile:focus-within .tile-expand {
+  opacity: 1;
+}
+
+/* Tile-level controls sit at the end of the header row. */
+.tile-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+  /* The expand control is pinned 8px from the tile edge, so its left edge lands
+   * 24px in -- 8px past the 16px content box. Reserve that overhang plus 4px so
+   * the last action clears it on hover, and no more: the old 26px pushed the
+   * whole group 50px off the tile edge and read as a stray gap. */
+  margin-right: 12px;
+}
+
+/* --- chart tooltip --- */
+
+.tip {
+  min-width: 200px;
+  padding: 10px 12px;
+  font-size: 13px;
+  color: var(--arvo-color-t-primary, #010101);
+}
+
+.tip__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 6px;
+}
+
+.tip__total {
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.tip__table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.tip__table td {
+  padding: 3px 0;
+  white-space: nowrap;
+}
+
+.tip__name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tip__swatch {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+}
+
+.tip__value {
+  text-align: right;
+  padding-left: 24px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The row for the series under the pointer, so the tooltip agrees with the
+ * highlight in the plot about which series is being read. */
+.tip__row--on {
+  font-weight: 500;
+}
+
+.tile-title {
+  margin: 0;
+  /* h16-m. Arvo defines no bold weight at any size, so a report title tops out
+   * at medium -- 600 was heavier than anything in the type scale. */
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--arvo-color-t-primary, #010101);
+}
+
+.tile-subtitle {
+  margin: 2px 0 12px;
+  color: var(--arvo-color-t-secondary, #303030);
+}
+
+.tile-body {
+  height: 320px;
+}
+
+/* ------------------------------------------------------------ pivot table --
+ * Geometry per pivot-table-design-guidelines.md: uniform 28px rows (header
+ * included), 8px/6px cell padding, 1px divider borders, numerics right-aligned.
+ */
+
+.pivot {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pivot__toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.pivot__count {
+  color: var(--arvo-color-t-secondary, #303030);
+}
+
+.pivot__actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+}
+
+.pivot__scroll {
+  overflow: auto;
+  border: 1px solid var(--arvo-color-b-divider, #e5e5e5);
+}
+
+/* 60px actions column, three attribute columns (Product Line, Customer Group,
+ * Data), then twelve month columns. The min-width is their sum, so the months
+ * flex to fill a wide viewport but scroll horizontally instead of compressing
+ * on a narrow one -- the guidelines call out compressed, always-truncated
+ * columns as a defect. */
+.pivot__table {
+  width: 100%;
+  min-width: calc(60px + (3 * 140px) + (12 * 110px));
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.pivot__col--actions {
+  width: 60px;
+}
+
+.pivot__col--member {
+  width: 140px;
+}
+
+/* Guidelines call for 28px rows with 8px/6px padding. Cells are vertically
+ * centred by default, so the height is pinned and the vertical padding folded
+ * into it — otherwise the 16px info icon's line box pushes rows to 32px and
+ * breaks the uniform density rule. Horizontal padding stays at the spec'd 8px. */
+.pivot__table th,
+.pivot__table td {
+  height: 28px;
+  padding: 0 8px;
+  line-height: 1;
+  text-align: left;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  border: 1px solid var(--arvo-color-b-divider, #e5e5e5);
+  background-color: var(--arvo-color-s-direct, #fff);
+}
+
+/* Arvo's l14-m label style: 0.875rem / 500. The type scale ships as SCSS
+ * mixins, so there is no --arvo-font-l14-m custom property to reference and the
+ * values are written out. */
+.pivot__table th {
+  /* Falls back to l14-m when no setting has been applied. The User Settings
+   * panel publishes --set-* on the shell, so changing a value restyles the
+   * grid without re-rendering a single row. */
+  font-size: var(--set-pivot-header-size, 0.875rem);
+  font-weight: var(--set-pivot-header-weight, 500);
+  color: var(--arvo-color-t-primary, #010101);
+}
+
+.pivot__table td {
+  font-size: var(--set-pivot-row-size, inherit);
+}
+
+.pivot__table td {
+  font-weight: 400;
+  color: var(--arvo-color-t-neutral, #010101);
+}
+
+.pivot__table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.pivot__group-row th {
+  height: 28px;
+}
+
+.pivot__group-label {
+  text-align: center;
+}
+
+/* These modifiers must out-specify the generic `.pivot__table th/td` rule
+ * above, so they are qualified with the element selector. */
+
+/* Boundary between the frozen attribute region and the scrolling data region.
+ * Grey, not black -- a black rule reads as a hard page break through the data. */
+.pivot__table th.pivot__cell--attr,
+.pivot__table td.pivot__cell--attr {
+  border-right: 1px solid var(--arvo-color-b-divider, #e5e5e5);
+}
+
+.pivot__table th.pivot__cell--center,
+.pivot__table td.pivot__cell--center {
+  text-align: center;
+}
+
+.pivot__table th.pivot__cell--num,
+.pivot__table td.pivot__cell--num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.pivot__table td.pivot__cell--editable {
+  background-color: var(--arvo-color-s-fn-editable, #fff2d6);
+}
+
+.pivot__table th.pivot__cell--currenttime,
+.pivot__table td.pivot__cell--currenttime {
+  background-color: var(--arvo-color-s-fn-currenttime, #efbc5c);
+  color: var(--arvo-color-t-neutral, #010101);
+}
+
+.pivot__info {
+  display: block;
+  font-size: 16px;
+  line-height: 1;
+  color: var(--arvo-color-i-secondary, #303030);
+}
+
+/* ================================================================== v2 ==
+ * Decluttered variant, toggled from the header. Everything below is scoped to
+ * .app-container--v2, so v1 renders exactly as before.
+ *
+ * Three moves: one control row instead of three, fewer surfaces and borders,
+ * and hierarchy inside the pivot instead of a uniform grid of ruled cells.
+ * ======================================================================= */
+
+.app-container--v2 {
+  /* Hairline seams. The 4px grey gutters made the shell read as a set of
+   * separate panels rather than one view. */
+  --shell-seam: 1px;
+
+  /* Canvas held below the filter bar. This part of the inset lives outside the
+   * scroll container, so content can never ride up against the filter bar --
+   * padding alone would scroll away with the content. */
+  --filter-gap: 8px;
+
+  /* 20px of canvas around the workspace. Declared here rather than on
+   * .content-area so the filter bar can align to the same figure -- both read
+   * it, so neither can drift from the other. */
+  --content-inset: 20px;
+  --scrollbar-gutter: 8px;
+}
+
+/* The header seam is a hairline in v2 like every other one -- it was still the
+ * v1 4px, which also meant it stacked on the filter bar's own margin and put
+ * the filters 23px below the header instead of 20. */
+.app-container--v2 .app-main {
+  gap: var(--shell-seam);
+}
+
+/* v2 vertical rhythm. The complaint is density, but the fix is not uniformly
+ * more air -- it is asymmetry. Spacing between sections has to clearly beat
+ * spacing inside them, or a heading reads as belonging to neither:
+ *
+ *   between sections   ~53px  (28 bottom + 1 rule + 24 top)
+ *   heading -> content   12px
+ *
+ * That is roughly 4:1. Previously it was 20px vs 16px -- almost 1:1, which is
+ * why the titles looked like they were floating. */
+.app-container--v2 .filter-bar {
+  height: 40px;
+  gap: 12px;
+
+  /* Canvas between the header and the filters. .app-main's gap supplies the
+   * first sliver of it, as the shell seam does on the left edge. */
+  margin-top: calc(var(--content-inset) - var(--shell-seam));
+
+  /* Left edge aligned with the reports below, using their own expression so
+   * the two cannot drift: the filters and the layers they govern should start
+   * on the same line. The shell seam already contributes part of the inset, so
+   * the padding makes up the balance. */
+  padding-left: calc(var(--content-inset) - var(--shell-seam));
+  /* No scrollbar-gutter deduction on this side, unlike .content-area: the
+   * filter bar is not a scroll container, so nothing sits between it and the
+   * launchbar to make up the difference. */
+  padding-right: calc(var(--content-inset) - var(--shell-seam));
+}
+
+/* The 20px above the first layer is split: 8px here, outside the scroll
+ * container so it always shows, and the remainder as padding inside it. */
+.app-container--v2 .app-content {
+  gap: var(--filter-gap);
+}
+
+/* Each layer is its own surface, separated by a band of canvas rather than a
+ * hairline. 12px throughout -- the same seam used between the KPIs, so the
+ * whole view runs on one spacing value inside the 20px outer inset. */
+.app-container--v2 .content-area {
+  gap: 12px;
+  background-color: transparent;
+
+  /* --content-inset is 20px of canvas either side of the reports (declared on
+   * .app-container--v2 so the filter bar shares it). The shell seam already
+   * eats into that on both edges, and on the right the reserved scrollbar
+   * gutter does too -- it sits between the report and the launchbar. The
+   * padding therefore makes up only the balance, or the right side lands at
+   * 28px against the left's 20px. */
+  /* The 8px already held by .app-content's gap is deducted here, so the total
+   * distance from the filter bar to the first layer is still 20px. */
+  padding-top: calc(var(--content-inset) - var(--filter-gap));
+  padding-bottom: var(--content-inset);
+  padding-left: calc(var(--content-inset) - var(--shell-seam));
+  padding-right: calc(
+    var(--content-inset) - var(--shell-seam) - var(--scrollbar-gutter)
+  );
+}
+
+.app-container--v2 .kpi-layer,
+.app-container--v2 .report-tile {
+  background-color: var(--arvo-color-s-layer-01, #fff);
+}
+
+.app-container--v2 .report-tile {
+  padding: 24px;
+}
+
+/* The tile header carries the report's controls in v2, so it becomes a single
+ * aligned row rather than a stacked title block. It wraps rather than letting
+ * the toolbar squeeze the title down to one word per line. */
+.app-container--v2 .tile-header {
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  /* Deliberately tighter than the gap between sections, so the heading binds
+   * to the content it labels. */
+  margin-bottom: 12px;
+}
+
+.app-container--v2 .tile-heading {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* The subtitles restate what the title and column headers already say -- pure
+ * weight for no information, and the first thing to go when decluttering. */
+.app-container--v2 .tile-subtitle {
+  display: none;
+}
+
+/* Size carries the hierarchy here, not weight. 18px at medium reads as a
+ * heading without the slab-like density of 600 at that size; negative tracking
+ * stops the larger size from feeling loose. */
+.app-container--v2 .tile-title {
+  font-size: 18px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* KPI band is its own layer in the content stack, padded and separated like a
+ * report. Inside it there are no cards -- separation is spacing alone, so it
+ * reads as a summary line rather than four more panels on an already panelled
+ * screen. */
+/* Transparent wrapper -- each KPI below is its own surface, so the canvas shows
+ * between them the same way it shows between the report layers. */
+.app-container--v2 .kpi-layer {
+  padding: 0;
+  background-color: transparent;
+}
+
+/* 12px -- tighter than the 20px between layers, because these are one row of
+ * related figures rather than independent sections. */
+.app-container--v2 .kpi-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+}
+
+.app-container--v2 .kpi {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  padding: 16px 20px;
+  background-color: var(--arvo-color-s-layer-01, #fff);
+}
+
+.app-container--v2 .kpi__label {
+  font-size: 12px;
+  color: var(--arvo-color-t-secondary, #303030);
+}
+
+.app-container--v2 .kpi__value {
+  font-size: 24px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  color: var(--arvo-color-t-primary, #010101);
+}
+
+.app-container--v2 .kpi__meta {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+}
+
+.app-container--v2 .kpi__delta {
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.app-container--v2 .kpi__delta--negative {
+  color: var(--arvo-color-t-negative, #bc1227);
+}
+
+.app-container--v2 .kpi__delta--positive {
+  color: var(--arvo-color-t-positive, #00804f);
+}
+
+.app-container--v2 .kpi__caption {
+  color: var(--arvo-color-t-tertiary, #4c4c4c);
+}
+
+.app-container--v2 .pivot__actions {
+  flex-wrap: wrap;
+}
+
+.app-container--v2 .pivot {
+  gap: 0;
+}
+
+/* Horizontal rules only. A border on all four sides of every cell turned 288
+ * numbers into a grid of boxes; rows are what the eye actually follows. */
+.app-container--v2 .pivot__scroll {
+  border: none;
+}
+
+/* 36px rows. The grid is the densest surface on the screen and the main source
+ * of the "condensed" complaint -- v1's 28px is the guideline figure, but that
+ * spec predates the current type scale and reads as cramped at 12px text.
+ * 36px is where a data grid stops feeling like a spreadsheet dump. */
+.app-container--v2 .pivot__table th,
+.app-container--v2 .pivot__table td {
+  height: 36px;
+  padding: 0 12px;
+  border: none;
+  border-bottom: 1px solid var(--arvo-color-b-divider, #e5e5e5);
+}
+
+/* Header sits on the same white surface as the data, separated by a rule alone.
+ * The tinted band read as a heavier spreadsheet chrome; weight and colour carry
+ * the distinction instead. */
+.app-container--v2 .pivot__table thead th {
+  background-color: var(--arvo-color-s-layer-01, #fff);
+  /* Ruled top and bottom so the header reads as a framed band rather than a
+   * row that happens to sit above a line. */
+  border-top: 1px solid var(--arvo-color-b-divider, #e5e5e5);
+  border-bottom-color: var(--arvo-color-b-divider, #e5e5e5);
+  /* l14-m in the primary text colour: with the tinted header band gone, weight
+   * and full-strength colour are the only things separating the header from the
+   * data, so the secondary grey left it reading as just another row. */
+  font-size: var(--set-pivot-header-size, 0.875rem);
+  font-weight: var(--set-pivot-header-weight, 500);
+  color: var(--arvo-color-t-primary, #010101);
+}
+
+/* The only vertical rule worth keeping: where the frozen attributes end and the
+ * scrolling data begins.
+ *
+ * Drawn as an inset shadow rather than a border. This column is sticky, and a
+ * collapsed-border table does not repaint that border as the cell travels --
+ * the divider would vanish the moment you scrolled sideways. A shadow is
+ * painted by the cell itself, so it stays with the frozen edge. */
+.app-container--v2 .pivot__table th.pivot__cell--attr,
+.app-container--v2 .pivot__table td.pivot__cell--attr {
+  border-right: none;
+  box-shadow: inset -1px 0 0 var(--arvo-color-b-divider, #e5e5e5);
+}
+
+/* Actuals anchor each group; the three forecasts are supporting rows. */
+.app-container--v2 .pivot__row--actual td {
+  font-weight: 500;
+}
+
+/* Customer blocks are closed with a heavier rule, so the four metric rows read
+ * as one group rather than sixteen equal lines. */
+.app-container--v2 .pivot__row--group-end td {
+  border-bottom-width: 2px;
+}
+
+/* Excel-style frozen panes: the four attribute columns stay put while the
+ * twelve months scroll under them. Offsets follow the colgroup widths
+ * (60px actions, then 140px each). Sticky cells need their own background or
+ * the scrolling numbers show through. */
+.app-container--v2 .pivot__table th:nth-child(-n + 4),
+.app-container--v2 .pivot__table td:nth-child(-n + 4) {
+  position: sticky;
+  z-index: 1;
+  background-color: var(--arvo-color-s-layer-01, #fff);
+}
+
+/* Attribute columns are narrower in v2 than v1's 140px. Frozen columns are
+ * dead space for the data, and the guidelines warn against freezing so many
+ * that the data area becomes unusable -- 4 x 140 left nothing on screen. */
+.app-container--v2 .pivot__col--member {
+  width: 120px;
+}
+
+.app-container--v2 .pivot__table {
+  min-width: calc(60px + (3 * 120px) + (12 * 110px) + 110px);
+}
+
+.app-container--v2 .pivot__col--trend {
+  width: 110px;
+}
+
+/* Data bar sits behind the figure rather than beside it, so the column still
+ * reads as numbers first and magnitude second. */
+.app-container--v2 .pivot__cell--bar {
+  position: relative;
+}
+
+.app-container--v2 .pivot__cell--bar::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: var(--bar-width, 0%);
+  height: 18px;
+  transform: translateY(-50%);
+  /* Translucent viz blue, not the opaque step 100.
+   *
+   * The bar sits behind a number, so it has to be seen through: at full opacity
+   * it competed with the digits instead of sitting under them. Alpha also means
+   * the bar and a conditional tint can occupy the same cell without one hiding
+   * the other. */
+  background-color: rgba(47, 119, 240, 0.18);
+}
+
+.app-container--v2 .pivot__figure {
+  position: relative;
+}
+
+.app-container--v2 .pivot__cell--trend {
+  padding: 0 12px;
+}
+
+.app-container--v2 .pivot__spark {
+  width: 100%;
+}
+
+/* ========================================================= scorecard view ==
+ * KPI group over a 2x2 of reports. Only reachable in v2.
+ * ======================================================================= */
+
+/* Transparent wrapper: each KPI is its own surface, so the gaps between them
+ * expose the canvas exactly as the gaps between reports do. A single padded
+ * white container would have made those gaps white-on-white. */
+.kpi-group {
+  background-color: transparent;
+}
+
+/* Separated by 12px of space rather than hairline rules -- the dividers were
+ * one more line per cell on a screen already full of them. */
+.kpi-group__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.kpi-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  padding: 16px 20px;
+  background-color: var(--arvo-color-s-layer-01, #fff);
+}
+
+/* Typography matches the analysis view's KPI band exactly -- 12px sentence-case
+ * label over a 24px medium value. It was 11px uppercase 600 over 28px 600 here,
+ * which made the same figure look like a different kind of thing depending on
+ * which tab you were on. */
+.kpi-cell__label {
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--arvo-color-t-secondary, #303030);
+}
+
+.kpi-cell__value {
+  font-size: 24px;
+  font-weight: 500;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  color: var(--arvo-color-t-primary, #010101);
+}
+
+.kpi-cell__value--positive { color: var(--arvo-color-t-positive, #00804f); }
+.kpi-cell__value--negative { color: var(--arvo-color-t-negative, #bc1227); }
+.kpi-cell__value--warning { color: var(--arvo-color-t-warning, #926200); }
+
+.kpi-cell__meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+}
+
+.kpi-cell__delta {
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.kpi-cell__delta--positive { color: var(--arvo-color-t-positive, #00804f); }
+.kpi-cell__delta--negative { color: var(--arvo-color-t-negative, #bc1227); }
+.kpi-cell__delta--warning { color: var(--arvo-color-t-warning, #926200); }
+
+.kpi-cell__caption,
+.kpi-cell__foot {
+  font-size: 12px;
+  color: var(--arvo-color-t-tertiary, #4c4c4c);
+}
+
+.kpi-cell__action {
+  align-self: flex-start;
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  color: var(--arvo-color-t-negative, #bc1227);
+}
+
+/* Every micro-visual occupies the same 24px band, whatever its type, so the six
+ * cells stay one aligned row instead of six differently-shaped widgets. */
+.kpi-cell__visual {
+  display: flex;
+  align-items: center;
+  height: 24px;
+  margin-top: 2px;
+}
+
+.kpi-cell__spark {
+  width: 100%;
+}
+
+.kpi-strip {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 2px;
+  width: 100%;
+}
+
+.kpi-strip__cell {
+  height: 16px;
+  background-color: var(--arvo-color-s-layer-02, #f2f2f2);
+}
+
+/* Win/loss and heat cells are both coloured from the viz palette in JS -- see
+ * OUTCOME and heat() in viz.js -- so there are no modifier classes here. */
+
+.kpi-cell__track {
+  width: 100%;
+  height: 6px;
+  background-color: var(--arvo-color-s-layer-02, #f2f2f2);
+}
+
+.kpi-cell__fill {
+  height: 100%;
+  background-color: var(--arvo-color-s-theme, #010101);
+}
+
+.kpi-cell__fill--positive { background-color: var(--arvo-color-t-positive, #00804f); }
+.kpi-cell__fill--negative { background-color: var(--arvo-color-t-negative, #bc1227); }
+.kpi-cell__fill--warning { background-color: var(--arvo-color-t-warning, #926200); }
+
+/* --- the 2x2 of reports --- */
+
+/* Fixed 2x2. An auto-fit track let all four sit in one row on a wide screen,
+ * which is a strip of widgets rather than a dashboard.
+ *
+ * The grid takes the remaining height and splits it evenly between the two
+ * rows, so the view fills the viewport instead of leaving a dead band under
+ * the reports. */
+.report-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-auto-rows: minmax(0, 1fr);
+  flex: 1;
+  min-height: 0;
+  gap: 12px;
+}
+
+/* 12px from the KPI band to the reports, matching the gap between reports.
+ *
+ * Doubled class on purpose -- `.app-container--v2 .content-area` sets its own
+ * gap at the same specificity, so a single class would lose to it. */
+.content-area.content-area--scorecard {
+  gap: 12px;
+}
+
+@media (max-width: 900px) {
+  .report-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* The expanded card takes the whole grid; its siblings are hidden outright,
+ * matching how the analysis tab expands a report. */
+.report-card--expanded {
+  grid-column: 1 / -1;
+}
+
+/* Compact pivots inside the report cards. Same conventions as the main grid --
+ * horizontal rules only, right-aligned tabular numerics, sticky header -- at a
+ * smaller scale so two of them fit the 2x2. */
+.mini-pivot {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.mini-pivot__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.mini-pivot__table th,
+.mini-pivot__table td {
+  height: 32px;
+  padding: 0 12px;
+  text-align: left;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--arvo-color-b-divider, #e5e5e5);
+}
+
+.mini-pivot__table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  font-weight: 500;
+  color: var(--arvo-color-t-secondary, #303030);
+  background-color: var(--arvo-color-s-layer-02, #f2f2f2);
+}
+
+.mini-pivot__num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.mini-pivot__var--positive { color: var(--arvo-color-t-positive, #00804f); }
+.mini-pivot__var--negative { color: var(--arvo-color-t-negative, #bc1227); }
+
+.app-container--v2 .pivot__table th:nth-child(1),
+.app-container--v2 .pivot__table td:nth-child(1) { left: 0; }
+.app-container--v2 .pivot__table th:nth-child(2),
+.app-container--v2 .pivot__table td:nth-child(2) { left: 60px; }
+.app-container--v2 .pivot__table th:nth-child(3),
+.app-container--v2 .pivot__table td:nth-child(3) { left: 180px; }
+.app-container--v2 .pivot__table th:nth-child(4),
+.app-container--v2 .pivot__table td:nth-child(4) { left: 300px; }
+
+/* The frozen header cells are the corner: sticky on both axes, so they need to
+ * sit above both the sticky column and the sticky row. */
+.app-container--v2 .pivot__table thead th:nth-child(-n + 4) {
+  z-index: 3;
+  background-color: var(--arvo-color-s-layer-01, #fff);
+}
+
+/* Hover has to repaint the frozen cells too, or the highlight stops dead at
+ * the frozen boundary. */
+.app-container--v2 .pivot__table tbody tr:hover td {
+  background-color: var(--arvo-color-s-theme-active-4, #f2f2f2);
+}
+
+
+/* -------------------------------------------------- user preferences -- */
+
+/* Scrollbar visibility, applied to every scroll container in the shell.
+ * `always` and `hover` are the two the platform can honour precisely; `scroll`
+ * degrades to the browser's overlay behaviour, which is what it describes. */
+.scrollbars--always *::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.scrollbars--always *::-webkit-scrollbar-thumb {
+  background-color: var(--arvo-color-b-divider, #e5e5e5);
+}
+
+.scrollbars--hover *::-webkit-scrollbar-thumb {
+  background-color: transparent;
+}
+
+.scrollbars--hover *:hover::-webkit-scrollbar-thumb {
+  background-color: var(--arvo-color-b-divider, #e5e5e5);
+}
+
+.arvo-pnl__body:has(.prefs) {
+  overflow-x: hidden;
+}
+
+.prefs {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  /* Cancels the panel body's own inset so the tabstrip can run the full width.
+   *
+   * These mirror .arvo-pnl__body's padding exactly -- 16px top, 12px sides,
+   * 8px bottom. A flat -16px was wrong on three of the four edges and pulled
+   * the panel 8px wider than its container, which is what produced the
+   * horizontal scrollbar. */
+  margin: -16px -12px -8px;
+}
+
+.prefs__body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  /* The panel is a fixed 320px and every control is full width, so anything
+   * that overshoots produces a sideways scrollbar rather than wrapping.
+   * Nothing here is meant to scroll horizontally. */
+  overflow-x: hidden;
+  padding: 20px 16px 28px;
+  display: flex;
+  flex-direction: column;
+
+  /* The spacing scale, stated once.
+   *
+   * Four steps, each clearly bigger than the one below it, so nesting depth is
+   * legible from the gaps alone: between sections > between groups > between
+   * a caption and its fields > between fields inside a group. Values that sit
+   * too close together are what make a settings list read as one flat run. */
+  /* Cards sit closer than ruled sections do: the card edge already separates
+   * them, where a rule needs air either side to read as a boundary. */
+  --pref-gap-section: 16px;
+  --pref-gap-rule: 24px;
+  --pref-gap-group: 20px;
+  --pref-gap-caption: 10px;
+  --pref-gap-field: 12px;
+
+  gap: var(--pref-gap-section);
+}
+
+/* Sections are separated by air and a hairline, not by boxes. Nesting cards
+ * inside a panel that is already a card just adds edges to count. */
+/* The two tabs separate their sections differently, so the inset belongs to
+ * the treatment rather than to the section itself: a card needs padding to
+ * hold its content off its own edge, a rule does not. Leaving a shared 18px on
+ * both left General with an inset and no edge to justify it. */
+
+/* General: a rule between sections, with equal air either side of it. */
+.prefs__body:not(.prefs__body--reports) {
+  gap: var(--pref-gap-rule);
+}
+
+.prefs__body:not(.prefs__body--reports) .pref-section + .pref-section {
+  border-top: 1px solid var(--arvo-color-b-divider, #e5e5e5);
+  padding-top: var(--pref-gap-rule);
+}
+
+/* Reports: sections lift off the panel instead of being ruled apart.
+ *
+ * $arvo-shadow-low. A shadow needs something to cast against, so the section
+ * also takes a surface -- under a transparent block the shadow reads as a
+ * smudge rather than a raised card. The tint is the mode-aware shadow token,
+ * so it stays correct in dark mode rather than going blacker. */
+.prefs__body--reports .pref-section {
+  padding: 14px;
+  transition: box-shadow var(--arvo-duration-medium, 220ms) ease;
+  background-color: var(--arvo-color-s-layer-01, #fff);
+  box-shadow: 0 2px 6px -1px var(--arvo-color-s-shadow-static-1, rgba(0, 0, 0, 0.12));
+}
+
+/* h16-m. Arvo's heading scale defines no bold at any size, so a section title
+ * tops out at medium. */
+.pref-section__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--arvo-color-t-primary, #010101);
+}
+
+/* One line saying what the section governs. Settings panels are full of nouns
+ * with no stated consequence; this is where the consequence goes. */
+.pref-section__desc {
+  margin: 4px 0 0;
+  font-size: 0.75rem;
+  line-height: 1.5;
+  color: var(--arvo-color-t-secondary, #303030);
+}
+
+.pref-section__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pref-gap-group);
+  margin-top: 16px;
+}
+
+/* Groups inside a section are separated by a rule and real space.
+ *
+ * Column header, Rows and Export are separate subjects that happened to be
+ * stacked with the same gap as the fields inside them, so the tab read as one
+ * long list. Space alone was not enough at this density -- the rule is what
+ * makes the boundary unambiguous. */
+.pref-section__body > .pref-group + .pref-group {
+  border-top: 1px solid var(--arvo-color-b-divider, #e5e5e5);
+  padding-top: var(--pref-gap-group);
+}
+
+.pref-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pref-gap-field);
+}
+
+/* Names the subject once so the single-word labels beneath it are unambiguous
+ * without repeating it.
+ *
+ * Text colour carries the nesting, descending as it goes: section title in
+ * t-primary, this caption in t-primary but two steps smaller, the field labels
+ * in t-secondary, the hints in t-tertiary. A child never reads louder than its
+ * parent. */
+.pref-group__caption {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--arvo-color-t-primary, #010101);
+}
+
+/* The section the workspace just pointed at, marked for a moment.
+ * Deepens the shadow it already has rather than introducing a new colour, so
+ * the cue reads as the card lifting rather than as a state change. */
+.prefs__body--reports .pref-section--flash {
+  box-shadow: 0 4px 14px -2px var(--arvo-color-s-shadow-static-1, rgba(0, 0, 0, 0.18));
+}
+
+/* Sized to the cap height of the title beside it, and in the secondary icon
+ * tone so it marks the section without competing with the words. */
+.pref-section__ico {
+  font-size: 16px;
+  color: var(--arvo-color-i-secondary, #303030);
+}
+
+/* What the group governs, in the tertiary tone the hints use. */
+.pref-group__desc {
+  margin-top: -6px;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  color: var(--arvo-color-t-tertiary, #4c4c4c);
+}
+
+/* Label left, control right.
+ *
+ * This only fits because the insets around it were trimmed and the label sizes
+ * to its text rather than reserving a column -- "Regular Medium Bold" needs
+ * nearly every pixel the row has. */
+.pref-field {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* A label column, so the controls line up down the tab instead of starting at
+ * a different x in every row -- but a floor rather than a fixed width, or a
+ * label longer than the column wraps to two lines. Alignment only has to hold
+ * within a group, and every group's labels are the same length.
+ *
+ * Secondary: inside a group the caption above is the heading and these are its
+ * attributes. */
+.pref-field__label {
+  flex: 0 0 auto;
+  white-space: nowrap;
+
+  /* Separated from the options by type, not by a box.
+   *
+   * An outlined track worked but put a hard rule around every row, which read
+   * as far too much line for a 320px panel. Two steps of contrast do the same
+   * job with no added chrome: the label is smaller and lighter than the option
+   * text beside it, so it reads as naming the control rather than as one more
+   * choice in it. */
+  font-size: 0.75rem;
+  color: var(--arvo-color-t-tertiary, #4c4c4c);
+}
+
+.pref-field__hint {
+  font-size: 0.75rem;
+  line-height: 1.45;
+  color: var(--arvo-color-t-tertiary, #4c4c4c);
+}
+
+/* The segmented control fills the field, so each option gets equal width and
+ * the row reads as a scale rather than as buttons of assorted sizes. */
+/* The block is `arvo-btn-grp`, not `arvo-btn-group`. */
+.pref-field .arvo-btn-grp {
+  width: 100%;
+}
+
+/* Share the width evenly, so the row reads as a scale rather than as buttons
+ * of assorted sizes -- but never below the width of the label inside.
+ *
+ * `flex: 1` alone let the segments shrink past their content, which truncated
+ * "Regular" and "Medium" to fit three options into the row. The `0` basis
+ * grows them equally from their natural width instead, so they stay even while
+ * the longest label still fits whole. */
+.pref-field .arvo-btn-grp > button {
+  flex: 1 0 auto;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.pref-choice {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* Indented to the radio's label, so the hint reads as belonging to the option
+ * rather than to the group. */
+.pref-choice__hint {
+  padding-left: 26px;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  color: var(--arvo-color-t-tertiary, #4c4c4c);
+}
+
+/* A selectable card, so the palette preview is part of the target rather than
+ * decoration sitting next to it. */
+.palette-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px;
+  cursor: pointer;
+  border: 1px solid var(--arvo-color-b-divider, #e5e5e5);
+  transition:
+    border-color var(--arvo-duration-fast, 150ms) ease,
+    background-color var(--arvo-duration-fast, 150ms) ease;
+}
+
+.palette-card:hover {
+  background-color: var(--arvo-color-s-layer-02, #f2f2f2);
+}
+
+.palette-card--on {
+  border-color: var(--arvo-color-b-theme-active, #010101);
+}
+
+.palette-card__hint {
+  padding-left: 26px;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  color: var(--arvo-color-t-tertiary, #4c4c4c);
+}
+
+.palette-card__swatch {
+  display: flex;
+  height: 20px;
+  margin-left: 26px;
+  overflow: hidden;
+}
+
+.palette-card__swatch > span {
+  flex: 1;
+}
+
+/* Radio groups stack their options with real space; the default run-together
+ * spacing made four options read as one block of text. */
+.prefs .arvo-radio-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pref-gap-group);
+  max-width: 100%;
+}
+
+.prefs .arvo-combobox {
+  max-width: 100%;
+}
+
+
+/* ------------------------------------------------------------ workflows -- */
+
+.workflows {
+  display: flex;
+  flex-direction: column;
+}
+
+/* The workflow's overflow, laid over the accordion header rather than inside
+ * its trigger -- see WorkflowsPanel for why it cannot be the item's own
+ * `menuItems`. It is a sibling of the accordion item, so the markup stays
+ * valid; positioning is what puts it back in the header. */
+.wf-workflow {
+  position: relative;
+}
+
+.wf-workflow__menu {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  z-index: 1;
+}
+
+/* Room for the overflow, so a long workflow name never runs under it. */
+.wf-workflow .arvo-acc-item__trg {
+  padding-right: 40px;
+}
+
+/* Both overflows share one column.
+ *
+ * The workflow's menu is positioned by this rule and the favorite's by the
+ * list row's own padding, so they only line up if the two agree -- they sat
+ * 4px apart, which is exactly the kind of gap the eye catches down a vertical
+ * run of identical glyphs. 12px matches the row's padding-right. */
+.wf-workflow__menu {
+  right: 12px;
+}
+
+/* The selected favorite's accent bar.
+ *
+ * Arvo's `active` state fills the row but draws no leading edge -- measured
+ * border-left: 0 and no shadow -- so the marker in the reference has to be
+ * added. An inset shadow rather than a border, so turning it on never shifts
+ * the label sideways.
+ *
+ * 1.5px is $arvo-border-3. Arvo's border tokens are SCSS-only and compile away,
+ * so there is no --arvo-border-3 to reference; the literal is that token's
+ * documented value. */
+.wf-workflow .arvo-list-item {
+  position: relative;
+  transition: background-color var(--arvo-duration-medium, 220ms)
+    var(--arvo-ease-standard, ease);
+}
+
+/* The bar is its own element so it can actually move.
+ *
+ * It was an inset box-shadow, which cannot animate in from anywhere -- a shadow
+ * has no geometry to travel, so it simply appeared. A pseudo-element can be
+ * scaled from nothing, and scaling from the top edge reads as the marker
+ * running down the row rather than blinking on. */
+.wf-workflow .arvo-list-item::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 1.5px;
+  background-color: var(--arvo-color-b-theme-active, #010101);
+  transform: scaleY(0);
+  transform-origin: top;
+  transition: transform var(--arvo-duration-medium, 220ms)
+    var(--arvo-ease-emphasized, ease);
+}
+
+.wf-workflow .arvo-list-item.active::before {
+  transform: scaleY(1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wf-workflow .arvo-list-item,
+  .wf-workflow .arvo-list-item::before {
+    transition: none;
+  }
+}
+
+/* Favorites sit indented under their workflow.
+ *
+ * The indent is padding on the row, not a margin on the list, so the row's
+ * background and its selected accent still run the full width of the panel --
+ * only the label moves. Indenting the list instead would have pulled the
+ * highlight away from the panel edge and made the selected favorite look like
+ * a floating chip. */
+.wf-workflow .arvo-list-item {
+  padding-left: 40px;
+}
+
+/* Workflow name form (add / rename / copy).
+ *
+ * A single column: label above field, one rhythm between rows. space-16 is the
+ * gap between form fields throughout the app, and the checkbox counts as one
+ * even though it carries its own description underneath. */
+.wf-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 4px 0;
+}
+
+/* Create Post.
+ *
+ * One column, one rhythm: space-16 between fields, which is the form rhythm
+ * used in the favorites popover and the workflow windows, so this reads as the
+ * same product rather than a dialog of its own. */
+.post {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 4px 0;
+}
+
+.post__field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* Matches the label Arvo's own fields render, so the message block does not
+ * announce itself differently from the textbox above it. */
+.post__label {
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--arvo-color-t-secondary, #616161);
+}
+
+.post__required {
+  color: var(--arvo-color-t-negative, #c11429);
+}
+
+/* The editor wears the same clothes as every other field in this window.
+ *
+ * Arvo's filled inputs are a tinted block with a hairline rule under it that
+ * darkens on focus -- no box outline. The message box was a white card with a
+ * full border, which made it read as a different kind of control sitting inside
+ * the same form. Same fill, same rule, same focus behaviour: now the only thing
+ * that marks it out is its height, which is the one difference that is real. */
+.post__editor {
+  display: flex;
+  flex-direction: column;
+  background-color: var(--arvo-color-s-layer-02, #f5f5f5);
+  border-bottom: 1px solid var(--arvo-color-b-input, #b0b0b0);
+  transition: border-color var(--arvo-duration-fast, 120ms) var(--arvo-ease-standard, ease);
+}
+
+/* Drop target. The fill deepens and the rule lights rather than a dashed
+ * overlay appearing -- the field is already the target, so it only has to
+ * acknowledge the drag, not redraw itself as something else. */
+.post__editor--dropping {
+  background-color: var(--arvo-color-s-layer-03, #fff);
+  border-bottom-color: var(--arvo-color-b-theme-active, #010101);
+}
+
+.post__editor:focus-within {
+  border-bottom-color: var(--arvo-color-b-theme-active, #010101);
+  border-bottom-width: 1.5px;
+  /* Compensates the extra half pixel so the field does not shift on focus. */
+  margin-bottom: -0.5px;
+}
+
+/* The toolbar sits inside the fill, separated by a hairline rather than a box:
+ * it belongs to the field, not beside it. */
+.post__toolbar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 6px;
+  border-bottom: 1px solid var(--arvo-color-b-divider, #e5e5e5);
+}
+
+.post__body {
+  min-height: 120px;
+  max-height: 260px;
+  overflow-y: auto;
+  padding: 10px 12px;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--arvo-color-t-primary, #010101);
+  outline: none;
+}
+
+/* The placeholder is drawn rather than supplied: contenteditable has none of
+ * its own, and an empty editor with no prompt reads as broken. */
+.post__body:empty::before {
+  content: attr(data-placeholder);
+  color: var(--arvo-color-t-tertiary, #757575);
+}
+
+.post__body ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+/* Quiet by design: status, not content. */
+.post__meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--arvo-color-t-tertiary, #757575);
+}
+
+.post__files {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* Two classification fields side by side. They collapse to one column when the
+ * window is narrow, where a half-width select is unusable. */
+.post__row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+@media (max-width: 640px) {
+  .post__row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.post__switch {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--arvo-color-t-primary, #010101);
+  cursor: pointer;
+}
+
+.post__attach {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.post__hint {
+  font-size: 12px;
+  color: var(--arvo-color-t-secondary, #616161);
+}
+
+/* Share favorite.
+ *
+ * Same 16px form rhythm as the other windows. The list is the exception: rows
+ * sit closer together than fields do, because a list of people is scanned in
+ * one pass rather than read one item at a time. */
+.share {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 4px 0;
+}
+
+/* Names what is being shared. Sharing the wrong view is easy when the dialog
+ * never says which one it is. */
+.share__subject {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background-color: var(--arvo-color-s-layer-02, #f2f2f2);
+  color: var(--arvo-color-t-secondary, #616161);
+  font-size: 12px;
+}
+
+.share__subject-name {
+  color: var(--arvo-color-t-primary, #010101);
+  font-weight: var(--arvo-medium, 500);
+}
+
+/* Invite field and its access level: one row, because they are one decision. */
+.share__invite {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.share__invite > *:first-child {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.share__section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.share__heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 12px;
+  font-weight: var(--arvo-medium, 500);
+  color: var(--arvo-color-t-secondary, #616161);
+}
+
+/* The count is a fact about the list, so it reads like one: same size, quieter
+ * colour, no chrome around it. */
+.share__count {
+  color: var(--arvo-color-t-tertiary, #757575);
+  font-weight: var(--arvo-regular, 400);
+}
+
+.share__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  /* Six rows, then scroll. An access list can be long, and a window that grows
+     with it pushes General access -- the setting with the widest blast radius
+     -- off the bottom of the screen. */
+  max-height: 264px;
+  overflow-y: auto;
+}
+
+.share__row,
+.share__general {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 0;
+}
+
+.share__identity {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.share__name {
+  font-size: 14px;
+  line-height: 18px;
+  color: var(--arvo-color-t-primary, #010101);
+}
+
+/* Staged for removal. Struck through rather than dimmed: dimming reads as
+ * "disabled", which is a different claim, while a line through the name says
+ * this row is on its way out — and the name stays readable so you can still
+ * change your mind. */
+.share__name--revoked {
+  text-decoration: line-through;
+  color: var(--arvo-color-t-secondary, #616161);
+}
+
+.share__email {
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--arvo-color-t-secondary, #616161);
+}
+
+/* A group is a set of people, not a person: a glyph rather than a face, at the
+ * same 32px so the column stays straight. */
+.share__group,
+.share__general-icon {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  font-size: 15px;
+  color: var(--arvo-color-t-secondary, #616161);
+  background-color: var(--arvo-color-s-layer-02, #f2f2f2);
+}
+
+/* Stated, not offered: ownership is a transfer, not a permission. */
+.share__owner {
+  padding-right: 12px;
+  font-size: 13px;
+  color: var(--arvo-color-t-secondary, #616161);
+}
+
+/* Copy link reads as a link, not a third footer button competing with Share. */
+.share__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 13px;
+  color: var(--arvo-color-t-theme, #0a2ae0);
+  cursor: pointer;
+}
+
+.share__link:hover {
+  text-decoration: underline;
+}
+
+/* Inline revoke confirmation. Sits in the row it applies to, so there is never
+ * a question of which person is about to lose access — and no second modal
+ * over the share window. */
+.share__confirm {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.share__confirm-text {
+  font-size: 12px;
+  color: var(--arvo-color-t-secondary, #616161);
+  white-space: nowrap;
+}
+
+/* An action menu given an explicit `menuWidth` should honour it.
+ *
+ * The prop sets `--arvo-overlay-width` on the panel, but nothing in Arvo's
+ * stylesheet reads that variable for the panel's own width -- so a menu asked
+ * for 320px still sized itself to its content and truncated the longer favorite
+ * names next to their three trailing actions. Menus that were never given the
+ * variable fall back to auto and are untouched. */
+.arvo-action-menu {
+  width: var(--arvo-overlay-width, auto);
+}
+
+/* Arvo's hover-reveal rule has no `:hover` in it -- it keys off `.focused`,
+ * `.active` and focus-within, and relies on the menu marking the row under the
+ * pointer as focused. That holds today, but a plain hover selector costs
+ * nothing and makes the behaviour true by its own terms rather than by a
+ * side effect of another component's bookkeeping. */
+.arvo-menu-item--actions-on-hover:hover .arvo-menu-item__actions {
+  opacity: 1;
+  visibility: visible;
+}
