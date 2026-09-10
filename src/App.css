@@ -2782,9 +2782,11 @@ body {
   color: var(--arvo-color-t-secondary, #616161);
 }
 
+/* Same tracks as the condition rows, so Measure sits under Field and the two
+ * blocks read as one table rather than two that happen to be stacked. */
 .vfilter__labels--rank,
 .vfilter__row--rank {
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.4fr) 32px;
+  grid-template-columns: 32px minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.4fr) 32px;
 }
 
 /* The ranking block is a sibling card of the condition groups, and says what it
@@ -2810,7 +2812,10 @@ body {
   flex-direction: column;
   align-items: flex-start;
   gap: 8px;
-  padding-top: 12px;
+  /* The 2px sides match the gutter .vfilter__groups reserves for its card
+     shadows, so the ranking card shares a left edge with the condition cards
+     and their columns line up to the pixel. */
+  padding: 12px 2px 0;
   border-top: 1px solid var(--arvo-color-b-divider, #e5e5e5);
 }
 

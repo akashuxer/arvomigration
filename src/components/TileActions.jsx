@@ -88,6 +88,12 @@ function ReportSettings({ isOpen, onOpenChange }) {
 
 export function PivotActions() {
   const toast = useToast()
+  /* How many value filters are live on this tile.
+   *
+   * Kept here rather than inside the builder because the pivot's toolbar has to
+   * show it: a filter that changes what the grid contains, with nothing on
+   * screen to say so, is how people end up mistrusting the numbers. */
+  const [appliedFilters, setAppliedFilters] = useState(0)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   // Which actions were promoted out of the puzzle menu -- a layout choice,
   // so it outlives the tile that was open when it was made.
@@ -117,11 +123,24 @@ export function PivotActions() {
   }
 
   const openTask = (item) => {
+    /* Clearing has to reset the count as well as the filters, or the funnel
+       keeps claiming something is applied after it was taken away. */
+    if (item?.id === 'clear') {
+      if (appliedFilters === 0) return
+      setAppliedFilters(0)
+      toast.show({ type: 'positive', message: 'Value filters cleared' })
+      return
+    }
     if (TASK_TITLES[item?.id]) setTask(item.id)
   }
 
   const renderPinned = (action) => {
-    const { id, label, icon, kind, items } = action
+    const { id, label, kind, items } = action
+    /* Filled funnel while filters are applied, hollow when none are -- the
+       same icon in two states rather than a separate badge, so the control
+       says what it is and what it is doing in one place. */
+    const isFiltered = id === 'filters' && appliedFilters > 0
+    const icon = isFiltered ? 'filter-filled' : action.icon
 
     if (kind === 'split') {
       return (
@@ -224,6 +243,7 @@ export function PivotActions() {
               /* The builder hands back only what was finished -- incomplete
                  rows are dropped there rather than counted here. */
               const conditions = groups.reduce((total, { rows }) => total + rows.length, 0)
+              setAppliedFilters(conditions + ranks.length)
               const parts = []
               if (conditions) {
                 parts.push(`${conditions} value filter${conditions === 1 ? '' : 's'}`)

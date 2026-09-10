@@ -378,15 +378,21 @@ export default function ValueFilterBuilder({ onCancel, onSave }) {
             </header>
 
             <div className="vfilter__labels vfilter__labels--rank" aria-hidden="true">
+              {/* A leading spacer, so Measure starts where Field does. The
+                  conditions above reserve that column for the AND/OR rail;
+                  without the same reservation here the two blocks read as two
+                  different tables. */}
+              <span />
               <span>Measure</span>
               <span>Rank</span>
-              <span>How many</span>
+              <span>Value</span>
               <span />
             </div>
 
             <ol className="vfilter__rows">
               {ranks.map((rank, index) => (
                 <li className="vfilter__row vfilter__row--rank" key={rank.id}>
+                  <span className="vfilter__rail" aria-hidden="true" />
                   <ArvoSelect
                     aria-label="Measure"
                     placeholder="Select measure"
@@ -405,7 +411,7 @@ export default function ValueFilterBuilder({ onCancel, onSave }) {
                     onChange={(item) => item && patchRank(rank.id, { mode: item.value })}
                   />
                   <ArvoNumberInput
-                    aria-label="How many"
+                    aria-label="Value"
                     placeholder="10"
                     min={1}
                     isFullWidth
