@@ -3365,3 +3365,19 @@ body {
   font-weight: var(--arvo-medium, 500);
   color: var(--arvo-color-t-primary, #010101);
 }
+
+/* The header avatar holds still.
+ *
+ * Arvo animates the filled novai avatar -- the fill breathes and the ring
+ * orbits -- which is right for a control that is inviting a click. Once the
+ * panel is open the avatar is only reporting state, and a breathing badge in a
+ * toolbar competes with the panel it opened for the same attention. The panel's
+ * own mark is where the gradient gets to move.
+ *
+ * The keyframes are left running on the resting outline avatar; it is the
+ * filled, panel-is-open state that goes quiet. */
+.user-context .arvo-avt--novai.arvo-avt--filled,
+.user-context .arvo-avt--novai.arvo-avt--filled::before,
+.user-context .arvo-avt--novai.arvo-avt--filled .arvo-avt__gradient-surface {
+  animation: none;
+}
