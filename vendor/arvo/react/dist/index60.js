@@ -1,0 +1,205 @@
+import { jsxs, Fragment, jsx } from "react/jsx-runtime";
+import { forwardRef, useRef, useState, useEffect, useCallback, useMemo, isValidElement, cloneElement } from "react";
+import { ArvoActionMenu } from "./index49.js";
+import { useTooltip } from "./index10.js";
+import { useOpenStateSync } from "./index91.js";
+const ArvoDropdownIconButton = forwardRef(
+  function ArvoDropdownIconButton2({
+    icon,
+    tooltip,
+    variant = "primary",
+    size = "md",
+    isCompact = false,
+    isDisabled = false,
+    isLoading: isLoadingProp = false,
+    items,
+    search,
+    placement = "bottom-end",
+    maxHeight,
+    hasGroupDividers = true,
+    closeOnSelect = true,
+    menuProps,
+    overlay,
+    triggerRef: triggerRefProp,
+    isOpen: isOpenProp,
+    className,
+    onSelect,
+    onOpen,
+    onClose,
+    onOpenChange,
+    onClick,
+    onFocus,
+    onBlur,
+    onKeyDown,
+    ...rest
+  }, ref) {
+    const isLoading = isLoadingProp === true;
+    const menuRef = useRef(null);
+    const triggerRefInternal = useRef(null);
+    useTooltip({ triggerRef: triggerRefInternal, tooltip });
+    const isExternalMode = overlay != null || items == null && menuProps == null;
+    const [internalOpen, setInternalOpen] = useState(false);
+    const externalOpen = useOpenStateSync({
+      isOpen: isOpenProp,
+      triggerRef: triggerRefInternal,
+      onOpenChange: isExternalMode ? onOpenChange : void 0,
+      enabled: isExternalMode
+    });
+    const isOpen = isExternalMode ? externalOpen : internalOpen;
+    const dispatchedOpenRef = useRef(false);
+    useEffect(() => {
+      var _a;
+      if (dispatchedOpenRef.current === isOpen) return;
+      dispatchedOpenRef.current = isOpen;
+      (_a = triggerRefInternal.current) == null ? void 0 : _a.dispatchEvent(
+        new CustomEvent(isOpen ? "dd-icon-btn:open" : "dd-icon-btn:close", {
+          bubbles: true,
+          cancelable: true,
+          detail: {}
+        })
+      );
+    }, [isOpen]);
+    const tooltipContent = typeof tooltip === "string" ? tooltip : tooltip.content;
+    const handleInternalOpenChange = useCallback(
+      (next) => {
+        setInternalOpen(next);
+        onOpenChange == null ? void 0 : onOpenChange(next);
+      },
+      [onOpenChange]
+    );
+    const handleMenuSelect = useCallback(
+      (item, index) => {
+        var _a;
+        (_a = triggerRefInternal.current) == null ? void 0 : _a.dispatchEvent(
+          new CustomEvent("dd-icon-btn:select", {
+            bubbles: true,
+            cancelable: true,
+            detail: { item, index }
+          })
+        );
+        return onSelect == null ? void 0 : onSelect(item, index);
+      },
+      [onSelect]
+    );
+    const mergeRef = useCallback(
+      (node) => {
+        triggerRefInternal.current = node;
+        if (triggerRefProp) {
+          triggerRefProp.current = node;
+        }
+        if (typeof ref === "function") {
+          ref(node);
+        } else if (ref) {
+          ref.current = node;
+        }
+      },
+      [ref, triggerRefProp]
+    );
+    const triggerClasses = [
+      "arvo-dd-icon-btn",
+      "arvo-btn",
+      `arvo-btn--${variant}`,
+      `arvo-btn--${size}`,
+      isCompact && "arvo-dd-icon-btn--compact",
+      isOpen && "open",
+      isLoading && "loading",
+      className
+    ].filter(Boolean).join(" ");
+    const handleTriggerKeyDown = useCallback(
+      (e) => {
+        var _a, _b;
+        onKeyDown == null ? void 0 : onKeyDown(e);
+        if (e.defaultPrevented) return;
+        if (e.key !== "ArrowDown" || isDisabled || isLoading) return;
+        if (e.ctrlKey || e.metaKey || e.shiftKey) return;
+        e.preventDefault();
+        if (isExternalMode) {
+          (_a = triggerRefInternal.current) == null ? void 0 : _a.click();
+        } else {
+          (_b = menuRef.current) == null ? void 0 : _b.open();
+        }
+      },
+      [onKeyDown, isDisabled, isLoading, isExternalMode]
+    );
+    const renderedOverlay = useMemo(() => {
+      if (!overlay) return null;
+      if (!isValidElement(overlay)) return overlay;
+      const existing = overlay.props;
+      const injected = {};
+      if (existing.triggerRef === void 0) {
+        injected.triggerRef = triggerRefInternal;
+      }
+      if (isOpenProp !== void 0 && existing.isOpen === void 0) {
+        injected.isOpen = isOpenProp;
+      }
+      return cloneElement(overlay, injected);
+    }, [overlay, isOpenProp]);
+    return /* @__PURE__ */ jsxs(Fragment, { children: [
+      /* @__PURE__ */ jsxs(
+        "button",
+        {
+          ref: mergeRef,
+          type: "button",
+          ...rest,
+          className: triggerClasses,
+          disabled: isDisabled,
+          "aria-label": tooltipContent,
+          "aria-busy": isLoading || void 0,
+          onClick: (e) => {
+            var _a;
+            onClick == null ? void 0 : onClick(e);
+            if (!e.defaultPrevented && !isExternalMode) {
+              (_a = menuRef.current) == null ? void 0 : _a.toggle();
+            }
+          },
+          onFocus,
+          onBlur,
+          onKeyDown: handleTriggerKeyDown,
+          children: [
+            /* @__PURE__ */ jsx(
+              "span",
+              {
+                className: `arvo-dd-icon-btn__icon o9con o9con-${icon}`,
+                "aria-hidden": "true"
+              }
+            ),
+            !isCompact && /* @__PURE__ */ jsx(
+              "span",
+              {
+                className: "arvo-dd-icon-btn__caret o9con o9con-angle-down",
+                "aria-hidden": "true"
+              }
+            )
+          ]
+        }
+      ),
+      !isExternalMode && // Hybrid prop surface: spread `menuProps` first so flat / computed
+      // values win on overlap. Only bag-only keys flow through.
+      /* @__PURE__ */ jsx(
+        ArvoActionMenu,
+        {
+          ...menuProps,
+          ref: menuRef,
+          triggerRef: triggerRefInternal,
+          items: items ?? [],
+          placement,
+          search,
+          maxHeight,
+          hasGroupDividers,
+          closeOnSelect,
+          isDisabled: isDisabled || isLoading,
+          isLoading: false,
+          onOpen,
+          onClose,
+          onSelect: handleMenuSelect,
+          onOpenChange: handleInternalOpenChange
+        }
+      ),
+      renderedOverlay
+    ] });
+  }
+);
+export {
+  ArvoDropdownIconButton as default
+};
+//# sourceMappingURL=index60.js.map

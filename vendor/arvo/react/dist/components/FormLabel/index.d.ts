@@ -1,0 +1,2 @@
+export { ArvoFormLabel, ArvoFormLabelText, FormLabel, FormLabelText, type ArvoFormLabelProps, type ArvoFormLabelTextProps, type ArvoFormLabelContextHelp, } from './FormLabel';
+//# sourceMappingURL=index.d.ts.map
