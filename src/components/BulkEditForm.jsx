@@ -35,11 +35,18 @@ import {
 const MEASURES = [
   { id: 'sku-mix-actuals', value: 'sku-mix-actuals', label: 'SKU Mix % Actuals' },
   { id: 'sku-mix-planner', value: 'sku-mix-planner', label: 'SKU Mix % Planner' },
+  { id: 'sku-mix-lc', value: 'sku-mix-lc', label: 'SKU Mix % LC' },
+  { id: 'sku-mix-consensus', value: 'sku-mix-consensus', label: 'SKU Mix % Consensus' },
   { id: 'units-actuals', value: 'units-actuals', label: 'Units Actuals' },
+  { id: 'units-planner', value: 'units-planner', label: 'Units Planner' },
   { id: 'trade-spend', value: 'trade-spend', label: 'Trade Spend' },
+  { id: 'trade-spend-target', value: 'trade-spend-target', label: 'Target Trade Spend' },
+  { id: 'price-protection', value: 'price-protection', label: 'Price Protection' },
+  { id: 'promo-allowance', value: 'promo-allowance', label: 'Promo Allowance' },
   { id: 'forecast-30', value: 'forecast-30', label: '30d Forecast' },
   { id: 'forecast-60', value: 'forecast-60', label: '60d Forecast' },
   { id: 'forecast-90', value: 'forecast-90', label: '90d Forecast' },
+  { id: 'consensus', value: 'consensus', label: 'Consensus Forecast' },
 ]
 
 /* The slice the edit lands on. These mirror the pivot's current filters, which
@@ -49,6 +56,8 @@ const SCOPE = [
   { id: 'product', label: 'Product', values: ['SKU'] },
   { id: 'sku', label: 'SKU', values: ['P_9000_1', 'P_9000_2', 'P_9000_3'] },
   { id: 'time', label: 'Time', values: ['Day'] },
+  { id: 'period', label: 'Period', values: ['M06-2019'] },
+  { id: 'version', label: 'Version', values: ['Current Working View'] },
 ]
 
 const TITLES = {
@@ -149,7 +158,10 @@ const BulkEditForm = forwardRef(function BulkEditForm({ mode, onPickScope, onSum
 
       <ol className="bulk__rows">
         {rows.map((row) => {
-          /* Everything downstream of the measure waits for it. */
+          /* Everything downstream of the measure waits for it -- read-only
+             rather than disabled, so Arvo draws its dashed underline instead of
+             fading the control out. Faded reads as "broken or not for you";
+             dashed reads as "not yet", which is what is actually true. */
           const isReady = Boolean(row.measure)
           return (
             <li className={`bulk__row bulk__row--${mode}`} key={row.id}>
@@ -173,7 +185,7 @@ const BulkEditForm = forwardRef(function BulkEditForm({ mode, onPickScope, onSum
                   placeholder="Select source"
                   items={MEASURES.filter(({ value }) => value !== row.measure)}
                   value={row.source}
-                  isDisabled={!isReady}
+                  isReadOnly={!isReady}
                   isFullWidth
                   onChange={(value) =>
                     patchRow(row.id, { source: typeof value === 'string' ? value : value?.value })
@@ -187,7 +199,7 @@ const BulkEditForm = forwardRef(function BulkEditForm({ mode, onPickScope, onSum
                     name={`direction-${row.id}`}
                     orientation="horizontal"
                     value={row.direction}
-                    isDisabled={!isReady}
+                    isReadOnly={!isReady}
                     onChange={({ value }) => patchRow(row.id, { direction: value })}
                   >
                     <ArvoRadio value="increase" label="Increase" />
@@ -198,7 +210,7 @@ const BulkEditForm = forwardRef(function BulkEditForm({ mode, onPickScope, onSum
                     name={`by-${row.id}`}
                     orientation="horizontal"
                     value={row.by}
-                    isDisabled={!isReady}
+                    isReadOnly={!isReady}
                     onChange={({ value }) => patchRow(row.id, { by: value })}
                   >
                     <ArvoRadio value="percent" label="%" />
@@ -212,7 +224,7 @@ const BulkEditForm = forwardRef(function BulkEditForm({ mode, onPickScope, onSum
                   aria-label="Value"
                   placeholder="0"
                   isFullWidth
-                  isDisabled={!isReady}
+                  isReadOnly={!isReady}
                   value={row.value}
                   onInput={(event) => patchRow(row.id, { value: event.target.value })}
                 />
