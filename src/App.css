@@ -2587,3 +2587,185 @@ body {
   opacity: 1;
   visibility: visible;
 }
+
+/* Manage Value Filters.
+ *
+ * A filter builder is read down the left edge — field, then condition, then
+ * value — so the three controls sit on one grid whose columns line up across
+ * every row and every group. When they don't, comparing two conditions means
+ * re-reading both instead of scanning one column. */
+.vfilter {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 4px 0;
+}
+
+.vfilter__toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.vfilter__count,
+.vfilter__hint,
+.vfilter__status {
+  font-size: 12px;
+  color: var(--arvo-color-t-secondary, #616161);
+}
+
+.vfilter__groups {
+  display: flex;
+  flex-direction: column;
+  /* Cards cast shadows; without a little room the shadow of one lands on the
+     edge of the next and reads as a seam. */
+  padding: 2px;
+}
+
+/* A group is a lifted card, matching the Reports settings sections.
+ *
+ * A grey fill put the group on the same tone as the filled inputs inside it,
+ * so the block read as one large field rather than as a container of fields.
+ * Lifting it on shadow-low instead keeps the inputs the only tinted things in
+ * the window, which is what makes the grouping legible at a glance. */
+.vfilter__group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px;
+  background-color: var(--arvo-color-s-layer-01, #fff);
+  box-shadow: 0 2px 6px -1px var(--arvo-color-s-shadow-static-1, rgba(0, 0, 0, 0.12));
+}
+
+.vfilter__group-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.vfilter__group-tools {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.vfilter__rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Field / condition / value / duplicate / remove. The value column is widest
+ * because it is the one holding content of unknown length -- and widest again
+ * when `between` splits it into two bounds. */
+.vfilter__row {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.4fr) 32px 32px;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Two bounds sharing one column, with the word that joins them between. */
+.vfilter__between {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.vfilter__between > * {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.vfilter__between-word {
+  flex: 0 0 auto;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--arvo-color-t-tertiary, #757575);
+}
+
+/* The conjunction rail. Says how rows combine once per row rather than as a
+ * word centred between every pair, which is where the legacy dialog spent a
+ * whole line of height per condition. */
+.vfilter__rail {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  height: 100%;
+}
+
+.vfilter__rail-word {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--arvo-color-t-tertiary, #757575);
+}
+
+/* Between two groups: a rule with the word sitting in it, so the relationship
+ * is legible without another control to set. */
+.vfilter__joiner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 0;
+}
+
+.vfilter__joiner-line {
+  flex: 1 1 auto;
+  height: 1px;
+  background-color: var(--arvo-color-b-divider, #e5e5e5);
+}
+
+.vfilter__joiner-word {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--arvo-color-t-tertiary, #757575);
+}
+
+.vfilter__topbottom {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-top: 4px;
+  border-top: 1px solid var(--arvo-color-b-divider, #e5e5e5);
+}
+
+/* The builder owns its footer because Save depends on whether the conditions
+ * are complete, which the window has no way to know. */
+.vfilter__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--arvo-color-b-divider, #e5e5e5);
+}
+
+.vfilter__actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* The summary is the sentence the builder adds up to, so it reads as prose
+ * rather than as another label. */
+.vfilter__status {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+@media (max-width: 720px) {
+  .vfilter__row {
+    grid-template-columns: 24px minmax(0, 1fr) 32px 32px;
+  }
+  .vfilter__row > *:nth-child(3),
+  .vfilter__row > *:nth-child(4) {
+    grid-column: 2;
+  }
+}

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import usePersistentState from '../usePersistentState'
+import ValueFilterBuilder from './ValueFilterBuilder'
 import {
   ArvoCheckbox,
   ArvoWindow,
@@ -8,6 +9,7 @@ import {
   ArvoIconButton,
   ArvoPanel,
   ArvoSplitButton,
+  useToast,
 } from '@arvo/react'
 
 /* Report-tile controls, shared by every view so a pivot carries the same
@@ -85,6 +87,7 @@ function ReportSettings({ isOpen, onOpenChange }) {
 }
 
 export function PivotActions() {
+  const toast = useToast()
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   // Which actions were promoted out of the puzzle menu -- a layout choice,
   // so it outlives the tile that was open when it was made.
@@ -206,8 +209,31 @@ export function PivotActions() {
         title={TASK_TITLES[task] ?? ''}
         isOpen={task != null}
         onOpenChange={(open) => !open && setTask(null)}
+        /* The filter builder brings its own footer, because Save has to know
+           whether the conditions are complete. The other tasks use the
+           window's. */
+        hasFooter={task !== 'manage'}
+        /* The window re-applies initial focus on every render, which pulls the
+           caret out of whatever is being typed into. */
+        initialFocus={task === 'manage' ? 'none' : undefined}
       >
-        <p className="panel-placeholder">{TASK_TITLES[task]} content goes here.</p>
+        {task === 'manage' ? (
+          <ValueFilterBuilder
+            onCancel={() => setTask(null)}
+            onSave={(groups) => {
+              const count = groups
+                .flatMap(({ rows }) => rows)
+                .filter((row) => row.field && row.operator && String(row.value).trim()).length
+              toast.show({
+                type: 'positive',
+                message: `${count} value filter${count === 1 ? '' : 's'} applied`,
+              })
+              setTask(null)
+            }}
+          />
+        ) : (
+          <p className="panel-placeholder">{TASK_TITLES[task]} content goes here.</p>
+        )}
       </ArvoWindow>
 
       {/* Always present, and never pinnable itself -- it is the way back to
