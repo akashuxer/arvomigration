@@ -341,6 +341,10 @@ export function PivotActions() {
               <ArvoTextbox
                 aria-label="File name"
                 placeholder="File name"
+                /* md, which is 32px -- the same height as the sm buttons beside
+                   it. Arvo's sm textbox is 24px, so matching the buttons by
+                   name would have left the field visibly short against them. */
+                size="md"
                 width={220}
                 value={downloadName}
                 onInput={(event) => setDownloadName(event.target.value)}
@@ -349,7 +353,10 @@ export function PivotActions() {
                 label="Save as"
                 icon="save"
                 variant="secondary"
-                size="sm"
+                /* md, matching the field beside it and the window's own footer
+                   buttons -- ArvoWindow renders Cancel and Download at 32px, so
+                   an sm button here sat 8px short of everything around it. */
+                size="md"
                 isDisabled={!downloadName.trim()}
                 onClick={() =>
                   toast.show({

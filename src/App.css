@@ -2813,10 +2813,14 @@ body {
  * Same shape as the value-filter builder: labelled columns, rows on one grid,
  * scope beneath. Each verb has its own track list because Adjust carries two
  * radio groups where Copy carries a second measure. */
+/* space-16 between form fields, matching Manage Value Filters and the rest of
+ * the app's forms. The label sits 4px above its own control: field-to-field
+ * spacing has to beat label-to-control spacing, or the label starts looking
+ * like it belongs to the field above it. */
 .bulk {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 16px;
   padding: 4px 0;
 }
 
@@ -2862,8 +2866,8 @@ body {
 .bulk__scope {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding-top: 12px;
+  gap: 16px;
+  padding-top: 16px;
   border-top: 1px solid var(--arvo-color-b-divider, #e5e5e5);
 }
 
