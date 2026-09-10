@@ -2774,10 +2774,12 @@ body {
   grid-template-columns: 32px minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.4fr) 32px;
   gap: 8px;
   padding-bottom: 2px;
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--arvo-color-t-tertiary, #757575);
+  /* Sentence case, at the size Arvo gives a field label. Uppercase made three
+     ordinary words look like a system heading, which is more emphasis than a
+     column name needs. */
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--arvo-color-t-secondary, #616161);
 }
 
 .vfilter__labels--rank,
@@ -2792,10 +2794,15 @@ body {
   margin-top: 8px;
 }
 
+/* h14-m: the ranking block is a section of the dialog, not a caption on a
+ * control, so it carries the same weight as a section title elsewhere in the
+ * product. */
 .vfilter__group-title {
-  font-size: 12px;
+  margin: 0;
+  font-size: 14px;
+  line-height: 20px;
   font-weight: var(--arvo-medium, 500);
-  color: var(--arvo-color-t-secondary, #616161);
+  color: var(--arvo-color-t-primary, #010101);
 }
 
 .vfilter__topbottom {

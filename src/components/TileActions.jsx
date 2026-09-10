@@ -220,13 +220,20 @@ export function PivotActions() {
         {task === 'manage' ? (
           <ValueFilterBuilder
             onCancel={() => setTask(null)}
-            onSave={(groups) => {
-              const count = groups
-                .flatMap(({ rows }) => rows)
-                .filter((row) => row.field && row.operator && String(row.value).trim()).length
+            onSave={({ groups, ranks }) => {
+              /* The builder hands back only what was finished -- incomplete
+                 rows are dropped there rather than counted here. */
+              const conditions = groups.reduce((total, { rows }) => total + rows.length, 0)
+              const parts = []
+              if (conditions) {
+                parts.push(`${conditions} value filter${conditions === 1 ? '' : 's'}`)
+              }
+              if (ranks.length) {
+                parts.push(`${ranks.length} top/bottom rule${ranks.length === 1 ? '' : 's'}`)
+              }
               toast.show({
                 type: 'positive',
-                message: `${count} value filter${count === 1 ? '' : 's'} applied`,
+                message: parts.length ? `${parts.join(' and ')} applied` : 'Filters cleared',
               })
               setTask(null)
             }}

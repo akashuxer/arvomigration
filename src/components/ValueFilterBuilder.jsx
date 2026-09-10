@@ -141,11 +141,13 @@ export default function ValueFilterBuilder({ onCancel, onSave }) {
     (rank) => !(rank.field && String(rank.count ?? '').trim()),
   ).length
 
-  /* Saveable when something has been built and nothing is half-built --
-     conditions and ranking rules counting alike, since either on its own is a
-     filter worth applying. */
-  const canSave =
-    started.length + startedRanks.length > 0 && incomplete + incompleteRanks === 0
+  /* Save is always available.
+   *
+   * A disabled primary makes people hunt for the row that is holding it back,
+   * which is the opposite of what a half-filled draft needs. Saving instead
+   * applies what is finished and drops what is not -- the footer says how many
+   * will be dropped, so it is a stated outcome rather than a silent one. */
+  const ignored = incomplete + incompleteRanks
 
   /* The filter as a sentence. Groups are bracketed only when there is more
      than one, because "(A and B)" with nothing beside it is punctuation for
@@ -365,7 +367,7 @@ export default function ValueFilterBuilder({ onCancel, onSave }) {
         {ranks.length > 0 && (
           <section className="vfilter__group vfilter__group--rank">
             <header className="vfilter__group-head">
-              <span className="vfilter__group-title">Top / bottom</span>
+              <h4 className="vfilter__group-title">Top / bottom</h4>
               <ArvoIconButton
                 icon="trash"
                 tooltip="Remove all top / bottom rules"
@@ -439,10 +441,10 @@ export default function ValueFilterBuilder({ onCancel, onSave }) {
          * report. It doubles as the incomplete-row warning, so there is one
          * place to look rather than two. */}
         <span className="vfilter__status">
-          {incomplete + incompleteRanks > 0
-            ? `${incomplete + incompleteRanks} condition${
-                incomplete + incompleteRanks === 1 ? ' still needs' : 's still need'
-              } a value`
+          {ignored > 0
+            ? `${summary ? `${summary}. ` : ''}${ignored} incomplete condition${
+                ignored === 1 ? ' will be' : 's will be'
+              } ignored`
             : summary}
         </span>
         <span className="vfilter__actions">
@@ -451,8 +453,16 @@ export default function ValueFilterBuilder({ onCancel, onSave }) {
             label="Save"
             variant="primary"
             size="sm"
-            isDisabled={!canSave}
-            onClick={() => onSave(groups)}
+            onClick={() =>
+              onSave({
+                groups: groups
+                  .map((group) => ({ ...group, rows: group.rows.filter(isComplete) }))
+                  .filter(({ rows }) => rows.length),
+                ranks: ranks.filter(
+                  (rank) => rank.field && String(rank.count ?? '').trim(),
+                ),
+              })
+            }
           />
         </span>
       </footer>
