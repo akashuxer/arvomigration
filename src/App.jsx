@@ -7,6 +7,7 @@ import ChannelView from './components/ChannelView'
 import { ArvoPanel, ArvoToastProvider } from '@arvo/react'
 import UserSettingsPanel from './components/UserSettingsPanel'
 import WorkflowsPanel from './components/WorkflowsPanel'
+import NovaPanel from './components/NovaPanel'
 import { SettingsProvider, useSettings, settingsToCssVars } from './SettingsContext'
 import RightLaunchbar, { PANELS } from './components/RightLaunchbar'
 import usePersistentState, { resetStored } from './usePersistentState'
@@ -62,7 +63,13 @@ function AppShell() {
     if (activePanel !== 'settings') return
     setSettingsFocus({ section, token: Date.now() })
   }
-  const activePanelConfig = PANELS.find(({ id }) => id === activePanel)
+  /* Nova docks in the same slot as the launchbar panels but has no launcher of
+     its own -- it is opened from the assistant avatar in the header, where the
+     product has always put it. Its header actions are its own: history and a
+     new chat, which are chat concerns rather than panel ones. */
+  const NOVA_PANEL = { id: 'nova', title: 'o9 AI', icon: 'genai' }
+  const activePanelConfig =
+    activePanel === 'nova' ? NOVA_PANEL : PANELS.find(({ id }) => id === activePanel)
 
   // The panel keeps rendering its last contents while the slot slides shut --
   // otherwise it would blank out on the first frame of the close animation.
@@ -195,6 +202,7 @@ function AppShell() {
 
       <div className="app-main">
         <Header
+          onOpenNova={() => setActivePanel((current) => (current === 'nova' ? null : 'nova'))}
           activeTab={activeTab}
           onTabChange={goToTab}
           onBack={goBack}
@@ -231,7 +239,13 @@ function AppShell() {
                    own features rather than markup in the body -- they belong to
                    the panel chrome and stay put while the body scrolls. */
                 headerActions={
-                  isWorkflows
+                  panelConfig.id === 'nova'
+                    ? [
+                        { id: 'history', type: 'btn', icon: 'history', tooltip: 'Chat history' },
+                        { id: 'new', type: 'btn', icon: 'edit', tooltip: 'New chat' },
+                        { id: 'expand', type: 'btn', icon: 'expand', tooltip: 'Expand' },
+                      ]
+                    : isWorkflows
                     ? [
                         { id: 'favorite', type: 'btn', icon: 'star-o', tooltip: 'Favorite' },
                         { id: 'refresh', type: 'btn', icon: 'refresh', tooltip: 'Refresh' },
@@ -260,7 +274,9 @@ function AppShell() {
                     : false
                 }
               >
-                {panelConfig.id === 'settings' ? (
+                {panelConfig.id === 'nova' ? (
+                  <NovaPanel />
+                ) : panelConfig.id === 'settings' ? (
                   <UserSettingsPanel
                     settings={settings}
                     onChange={setSettings}

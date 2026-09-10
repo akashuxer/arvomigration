@@ -3004,3 +3004,223 @@ body {
 .arvo-tip {
   white-space: pre-line;
 }
+
+/* ---------------------------------------------------------------------------
+   o9 AI panel
+   ---------------------------------------------------------------------------
+   The gradient is Arvo's `--arvo-color-s-nova-static` token, not a copy of its
+   stops. The design system already animates that fill on the novai avatar --
+   angle, drift, and a slow breathe driven by --mp-nova-* -- so the panel opened
+   by that avatar stays in step with it rather than drifting into a second
+   orange that nearly matches. */
+.nova {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  gap: 16px;
+}
+
+/* The welcome sits in the middle of what is left after the composer, which is
+   what makes an empty assistant feel deliberately empty rather than unloaded. */
+.nova__welcome {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  text-align: center;
+  padding: 0 16px;
+}
+
+/* The mark: the gradient painted through the glyph itself, so the logo is the
+   colour rather than sitting on a coloured square. */
+.nova__mark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  margin-bottom: 8px;
+  border: 1px solid var(--arvo-color-b-divider, #e5e5e5);
+  font-size: 28px;
+}
+
+/* The gradient goes on the glyph's own pseudo-element, which is where the icon
+ * font actually draws -- the same place Arvo's nova avatar puts it. Clipping
+ * the parent's background to text left the glyph painting in the inherited
+ * colour. */
+.nova__mark .o9con::before,
+.nova__mode-mark .o9con::before {
+  background: var(--arvo-color-s-nova-static);
+  background-size: 260% 260%;
+  background-position: var(--mp-nova-shift-x, 50%) var(--mp-nova-shift-y, 50%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  animation: nova-fill-breathe 4.2s ease-in-out infinite alternate;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nova__mark .o9con::before,
+  .nova__mode-mark .o9con::before {
+    animation: none;
+  }
+}
+
+.nova__title {
+  margin: 0;
+  font-size: 24px;
+  line-height: 32px;
+  font-weight: var(--arvo-medium, 500);
+  color: var(--arvo-color-t-primary, #010101);
+}
+
+.nova__subtitle {
+  margin: 0;
+  max-width: 34ch;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--arvo-color-t-secondary, #616161);
+}
+
+.nova__suggestions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0 4px;
+}
+
+.nova__suggestions-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: var(--arvo-medium, 500);
+  color: var(--arvo-color-t-primary, #010101);
+}
+
+/* Left-aligned and full width: a suggestion is a sentence to read, and centring
+   it would make three of them a poster rather than a list. */
+.nova__suggestion {
+  width: 100%;
+  padding: 10px 12px;
+  text-align: left;
+  font: inherit;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--arvo-color-t-primary, #010101);
+  background-color: var(--arvo-color-s-layer-01, #fff);
+  border: 1px solid var(--arvo-color-b-divider, #e5e5e5);
+  cursor: pointer;
+  transition: background-color var(--arvo-duration-fast, 120ms) var(--arvo-ease-standard, ease);
+}
+
+.nova__suggestion:hover {
+  background-color: var(--arvo-color-s-layer-02, #f2f2f2);
+}
+
+/* The composer keeps the gradient as a hairline top edge -- enough to say the
+   assistant lives here, without a band of orange behind what you are typing.
+   *
+   * Two layers: a flat fill clipped to the padding box on top, the gradient
+   * clipped to the border box beneath, so only the transparent border shows it
+   * through. The order matters -- painting the gradient first and the fill
+   * second flooded the whole control. */
+.nova__composer {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px;
+  border: 1px solid var(--arvo-color-b-divider, #e5e5e5);
+  border-top: 2px solid transparent;
+  background-image:
+    linear-gradient(var(--arvo-color-s-layer-01, #fff), var(--arvo-color-s-layer-01, #fff)),
+    var(--arvo-color-s-nova-static);
+  background-origin: border-box;
+  background-clip: padding-box, border-box;
+}
+
+.nova__input {
+  width: 100%;
+  border: 0;
+  padding: 6px 4px;
+  resize: none;
+  font: inherit;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--arvo-color-t-primary, #010101);
+  background: transparent;
+  outline: none;
+}
+
+.nova__tools {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.nova__tool-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.nova__mode {
+  position: relative;
+}
+
+.nova__mode-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--arvo-color-t-primary, #010101);
+  background: none;
+  border: 1px solid var(--arvo-color-b-divider, #e5e5e5);
+  cursor: pointer;
+}
+
+.nova__mode-mark {
+  display: flex;
+  font-size: 14px;
+}
+
+.nova__mode-menu {
+  position: absolute;
+  bottom: calc(100% + 4px);
+  left: 0;
+  z-index: 2;
+  margin: 0;
+  padding: 4px 0;
+  list-style: none;
+  min-width: 160px;
+  background-color: var(--arvo-color-s-layer-01, #fff);
+  border: 1px solid var(--arvo-color-b-divider, #e5e5e5);
+  box-shadow: 0 2px 6px -1px var(--arvo-color-s-shadow-static-1, rgba(0, 0, 0, 0.12));
+}
+
+.nova__mode-menu button {
+  width: 100%;
+  padding: 6px 12px;
+  text-align: left;
+  font: inherit;
+  font-size: 13px;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+.nova__mode-menu button:hover {
+  background-color: var(--arvo-color-s-layer-02, #f2f2f2);
+}
+
+.nova__mode-menu .is-selected {
+  font-weight: var(--arvo-medium, 500);
+}

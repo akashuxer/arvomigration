@@ -46,7 +46,8 @@ export const VIEW_TABS = [
   { id: 'channel', label: 'Channel Assortments' },
 ]
 
-export default function Header({ activeTab, onTabChange, onBack, canGoBack = false }) {
+export default function Header({
+  onOpenNova, activeTab, onTabChange, onBack, canGoBack = false }) {
   const navRef = useRef(null)
   const bellRef = useRef(null)
   const identityRef = useRef(null)
@@ -190,7 +191,13 @@ export default function Header({ activeTab, onTabChange, onBack, canGoBack = fal
         {/* Nova AI. The novai variant defaults to the `outline` appearance,
             which is the resting gradient ring -- `filled` is its active state,
             so it is left alone here. */}
-        <ArvoAvatar variant="novai" size="md" tooltip="Ask Nova AI" isInteractive />
+        <ArvoAvatar
+          variant="novai"
+          size="md"
+          tooltip="Ask o9 AI"
+          isInteractive
+          onClick={onOpenNova}
+        />
         {/* One trigger across both, so hovering either the tenant or the
             avatar answers the whole question.
             *
