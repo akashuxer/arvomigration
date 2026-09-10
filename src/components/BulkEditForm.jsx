@@ -260,9 +260,14 @@ const BulkEditForm = forwardRef(function BulkEditForm({ mode, onPickScope, onSum
         })}
       </ol>
 
-      {/* Scope. Read-only, and dimmed until there is a measure to scope --
-          the fields describe where an edit lands, and there is no edit yet. */}
-      <div className={`bulk__scope${rows.some((row) => row.measure) ? '' : ' bulk__scope--waiting'}`}>
+      {/* Scope. Read-only always, and never gated on the measure.
+          *
+          * These fields are not downstream of To measure -- they report the
+          * slice the pivot is already showing, which is true before any measure
+          * is chosen and stays true after. Only the controls to the right of To
+          * measure depend on it, because only they are describing what happens
+          * to that measure. */}
+      <div className="bulk__scope">
         {SCOPE.map(({ id, label, values }) => (
           <div className="bulk__field" key={id}>
             <span className="bulk__field-label">
@@ -295,7 +300,6 @@ const BulkEditForm = forwardRef(function BulkEditForm({ mode, onPickScope, onSum
                 tooltip={`Choose ${label.toLowerCase()}`}
                 variant="tertiary"
                 size="sm"
-                isDisabled={!rows.some((row) => row.measure)}
                 onClick={() => onPickScope(label)}
               />
             </div>

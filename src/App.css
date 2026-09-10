@@ -2865,13 +2865,6 @@ body {
   gap: 12px;
   padding-top: 12px;
   border-top: 1px solid var(--arvo-color-b-divider, #e5e5e5);
-  transition: opacity var(--arvo-duration-medium, 220ms) var(--arvo-ease-standard, ease);
-}
-
-/* Dimmed until a measure exists. The fields describe where an edit lands, and
- * until something is being edited there is nothing to place. */
-.bulk__scope--waiting {
-  opacity: 0.5;
 }
 
 .bulk__field {
@@ -2910,6 +2903,23 @@ body {
 .bulk__field .arvo-multi-sel {
   flex: 1 1 auto;
   min-width: 0;
+}
+
+/* Read-only chips, drawn as ordinary ones.
+ *
+ * Arvo's read-only chip is dashed and greyed, which is the right signal for a
+ * field you might have expected to edit. These chips are not that: they are
+ * simply what the pivot is showing, and rendering six fields of dashed grey
+ * made a settled fact look like a disabled control. Only the four variables the
+ * read-only state overrides are put back, so everything else about the chip
+ * still comes from the component. */
+.bulk__field .arvo-chip.is-readonly {
+  --arvo-chip-bg: var(--arvo-color-s-layer-04, #f2f2f2);
+  --arvo-chip-text-color: var(--arvo-color-t-primary, #010101);
+  --arvo-chip-icon-color: var(--arvo-color-i-secondary, #616161);
+  --arvo-chip-border-color: var(--arvo-color-b-divider, #e5e5e5);
+  --arvo-chip-border-style: solid;
+  --arvo-chip-border-width: 1px;
 }
 
 /* A read-only field's own toggle opens nothing -- the component keeps rendering
