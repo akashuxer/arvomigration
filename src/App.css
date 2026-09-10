@@ -3072,10 +3072,22 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--arvo-color-s-nova-static);
+  /* Built from the animated variables rather than the static token.
+     *
+     * `--arvo-color-s-nova-static` is a fixed 61deg gradient -- the name says
+     * static -- so animating --mp-nova-angle beside it changed nothing. Arvo's
+     * own filled avatar composes the gradient from those variables, which is
+     * what makes the fill move. */
+  background: linear-gradient(
+    var(--mp-nova-angle, 125deg),
+    #ffdfa5 0.88%,
+    #ff3d00 var(--mp-nova-end-stop, 60%)
+  );
   background-size: 260% 260%;
   background-position: var(--mp-nova-shift-x, 50%) var(--mp-nova-shift-y, 50%);
-  animation: nova-fill-breathe 4.2s ease-in-out infinite alternate;
+  animation:
+    nova-fill-alive 1.8s ease-out,
+    nova-fill-breathe 4.2s ease-in-out infinite alternate;
 }
 
 .nova__mark-face .o9con,
@@ -3203,27 +3215,52 @@ body {
   position: relative;
 }
 
+/* A sweep that travels along the edge.
+ *
+ * A conic gradient turning inside a 1.5px line is invisible -- there is not
+ * enough of it on screen for a rotation to read. A linear gradient three times
+ * the width of the field, slid from left to right, is the same idea at a scale
+ * the eye can actually catch, and 2px gives it something to catch. The glow
+ * underneath is what makes it look lit rather than painted. */
 .nova__composer::after {
   content: '';
   position: absolute;
   left: 0;
   right: 0;
-  bottom: -1.5px;
-  height: 1.5px;
-  background: conic-gradient(
-    from var(--mp-nova-border-orbit, 0deg),
-    #ffdfa5,
-    #ff3d00,
-    #ffdfa5
+  bottom: -2px;
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    #ffdfa5 0%,
+    #ff3d00 25%,
+    #ffdfa5 50%,
+    #ff3d00 75%,
+    #ffdfa5 100%
   );
+  background-size: 300% 100%;
   opacity: 0;
   transition: opacity var(--arvo-duration-medium, 220ms) var(--arvo-ease-standard, ease);
+}
+
+.nova__composer:focus-within,
+.nova__composer--live {
+  border-bottom-color: transparent;
 }
 
 .nova__composer:focus-within::after,
 .nova__composer--live::after {
   opacity: 1;
-  animation: nova-mark-orbit 5.5s linear infinite;
+  box-shadow: 0 1px 8px -1px rgba(255, 61, 0, 0.45);
+  animation: nova-edge-sweep 2.4s linear infinite;
+}
+
+@keyframes nova-edge-sweep {
+  from {
+    background-position: 0% 50%;
+  }
+  to {
+    background-position: 300% 50%;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
