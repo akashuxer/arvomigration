@@ -1,9 +1,10 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Highcharts from 'highcharts'
 import { ArvoButton, ArvoIconButton } from '@arvo/react'
 import { ACTUAL, DIVERGING, SPEND } from '../viz'
 import PivotContextMenu from './PivotContextMenu'
 import usePivotCellFocus from './usePivotCellFocus'
+import ColumnFilter, { ColumnFilterButton } from './ColumnFilter'
 
 /* In-cell visualisation, applied by row type so no cell carries two treatments:
  *
@@ -123,7 +124,14 @@ export const CUSTOMERS = [
   },
 ]
 
-const PRODUCT_LINE = 'PL_10'
+/* Product lines across the customer groups.
+ *
+ * One line for every row made the Product Line filter a list of one, which
+ * demonstrates nothing -- a filter is only legible when there is something to
+ * filter out. Assigned by position so the same customer always sits in the same
+ * line. */
+const PRODUCT_LINES = ['PL_10', 'PL_20', 'PL_30']
+const productLineFor = (index) => PRODUCT_LINES[index % PRODUCT_LINES.length]
 
 // Variance against the same month's actual.
 //
@@ -175,10 +183,31 @@ export function PivotToolbar() {
   )
 }
 
+/* The columns a value filter makes sense on. Months hold numbers and are
+ * filtered through Manage Value Filters instead; Actions holds controls. */
+const FILTERABLE = [
+  { id: 'product', label: 'Product Line', of: (row) => row.product },
+  { id: 'customer', label: 'Customer Group', of: (row) => row.customerLabel },
+  { id: 'metric', label: 'Data', of: (row) => row.metric },
+]
+
 export default function PivotTable({ hasToolbar = true, isV2 = false }) {
   const tableRef = useRef(null)
   usePivotCellFocus(tableRef)
-  const rows = CUSTOMERS.flatMap((customer) =>
+
+  /* Which column's popover is open, and what each column has applied. The
+     anchor is held as a ref so one popover can be retargeted to whichever
+     header opened it. */
+  const [openColumn, setOpenColumn] = useState(null)
+  const [columnState, setColumnState] = useState({})
+  const anchorRef = useRef(null)
+
+  const openFilter = (label, trigger) => {
+    anchorRef.current = trigger
+    setOpenColumn(label)
+  }
+
+  const allRows = CUSTOMERS.flatMap((customer, customerIndex) =>
     METRICS.map((metric, metricIndex) => ({
       key: `${customer.id}-${metric}`,
       // Attribute labels print once per group, like a collapsed hierarchy.
@@ -190,10 +219,41 @@ export default function PivotTable({ hasToolbar = true, isV2 = false }) {
       isActual: metric === 'Units Actuals',
       // Last metric of a customer block -- carries the group separator.
       isGroupEnd: metricIndex === METRICS.length - 1,
+      // Named for the filter, which needs a value on every row rather than the
+      // once-per-group label the grid prints.
+      product: productLineFor(customerIndex),
+      customerLabel: customer.id,
     })),
   )
 
-  const peak = Math.max(...rows.flatMap((row) => row.values))
+  const column = (label) => FILTERABLE.find((entry) => entry.label === label)
+
+  /* Distinct values per column, taken from every row rather than the visible
+     ones: a filter list that shrinks as you filter is a list you cannot use to
+     undo the filter. */
+  const valuesFor = (label) => [...new Set(allRows.map(column(label).of))].sort()
+
+  const rows = (() => {
+    let result = allRows.filter((row) =>
+      FILTERABLE.every(({ label, of }) => {
+        const applied = columnState[label]?.values
+        return !applied || applied.has(of(row))
+      }),
+    )
+
+    /* Sorting reorders whole customer blocks rather than loose rows: a pivot
+       row means nothing away from the group it belongs to. */
+    const sorted = FILTERABLE.find(({ label }) => columnState[label]?.sort)
+    if (sorted) {
+      const direction = columnState[sorted.label].sort === 'asc' ? 1 : -1
+      const groups = [...new Set(result.map((row) => row.customerLabel))]
+      groups.sort((a, b) => a.localeCompare(b) * direction)
+      result = groups.flatMap((group) => result.filter((row) => row.customerLabel === group))
+    }
+    return result
+  })()
+
+  const peak = Math.max(...allRows.flatMap((row) => row.values))
 
   return (
     <div className="pivot">
@@ -201,6 +261,30 @@ export default function PivotTable({ hasToolbar = true, isV2 = false }) {
         <div className="pivot__toolbar">
           <PivotToolbar />
         </div>
+      )}
+
+      {openColumn && (
+        <ColumnFilter
+          anchorRef={anchorRef}
+          column={openColumn}
+          values={valuesFor(openColumn)}
+          applied={columnState[openColumn]?.values ?? null}
+          sort={columnState[openColumn]?.sort ?? null}
+          onClose={() => setOpenColumn(null)}
+          onApply={({ values, sort }) => {
+            setColumnState((current) => ({
+              ...current,
+              [openColumn]: {
+                // A set covering every value is not a filter -- storing it as
+                // one would light the funnel for a column filtering nothing.
+                values:
+                  values && values.size < valuesFor(openColumn).length ? values : null,
+                sort,
+              },
+            }))
+            setOpenColumn(null)
+          }}
+        />
       )}
 
       <div className="pivot__scroll">
@@ -217,9 +301,25 @@ export default function PivotTable({ hasToolbar = true, isV2 = false }) {
           <thead>
             <tr>
               <th scope="col" className="pivot__cell--center">Actions</th>
-              <th scope="col">Product Line</th>
-              <th scope="col">Customer Group</th>
-              <th scope="col" className="pivot__cell--attr">Data</th>
+              {FILTERABLE.map(({ id, label }) => (
+                <th
+                  scope="col"
+                  key={id}
+                  className={`pivot__cell--filterable${
+                    id === 'metric' ? ' pivot__cell--attr' : ''
+                  }`}
+                >
+                  <span className="pivot__head">
+                    {label}
+                    <ColumnFilterButton
+                      column={label}
+                      isFiltered={Boolean(columnState[label]?.values)}
+                      isSorted={Boolean(columnState[label]?.sort)}
+                      onOpen={openFilter}
+                    />
+                  </span>
+                </th>
+              ))}
               {/* Month headers stay left-aligned per the guidelines, while the
                   values beneath them are right-aligned numerics. */}
               {/* The current period is tinted here as well as shaded in the
@@ -260,7 +360,12 @@ export default function PivotTable({ hasToolbar = true, isV2 = false }) {
                     aria-label={`Row details for ${row.metric}`}
                   />
                 </td>
-                <td>{index === 0 ? PRODUCT_LINE : ''}</td>
+                {/* Once per group, like a collapsed hierarchy -- keyed off the
+                    same "first row of this customer" flag the customer column
+                    uses, not the table's own row index. With one product line
+                    for every row the two were indistinguishable; with three,
+                    the index printed it only at the very top. */}
+                <td>{row.customer ? row.product : ''}</td>
                 <td>{row.customer}</td>
                 <td className="pivot__cell--attr">{row.metric}</td>
                 {row.values.map((value, i) => {

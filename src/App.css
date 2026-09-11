@@ -3383,3 +3383,84 @@ body {
 .user-context .arvo-avt--novai.arvo-avt--filled .arvo-avt__gradient-surface {
   animation: none;
 }
+
+/* Column filter and sort.
+ *
+ * The trigger is hidden until the column is hovered or focused -- a header row
+ * with a control on every cell is a toolbar pretending to be a header. Once a
+ * column carries a filter its trigger stays visible, because a filter you
+ * cannot see is one you forget you set, and that is how people stop trusting
+ * what a grid is showing them. */
+.pivot__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+}
+
+.colfilter__trigger {
+  opacity: 0;
+  transition: opacity var(--arvo-duration-fast, 120ms) var(--arvo-ease-standard, ease);
+}
+
+.pivot__cell--filterable:hover .colfilter__trigger,
+.pivot__cell--filterable:focus-within .colfilter__trigger,
+.colfilter__trigger.is-applied {
+  opacity: 1;
+}
+
+.colfilter {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.colfilter__sort {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--arvo-color-b-divider, #e5e5e5);
+}
+
+.colfilter__label {
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--arvo-color-t-secondary, #616161);
+}
+
+.colfilter__sort-buttons {
+  display: flex;
+  gap: 4px;
+}
+
+/* Roughly seven rows, then scroll: enough to judge the list without the
+   popover becoming a page of its own. */
+.colfilter__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+/* Select-all sits apart from the values it governs. */
+.colfilter__all {
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--arvo-color-b-divider, #e5e5e5);
+}
+
+.colfilter__empty {
+  padding: 8px 0;
+  font-size: 13px;
+  color: var(--arvo-color-t-secondary, #616161);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .colfilter__trigger {
+    transition: none;
+  }
+}
