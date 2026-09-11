@@ -3396,6 +3396,18 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 4px;
+  min-width: 0;
+}
+
+/* The label yields before the control does: a truncated month is still
+ * readable, a half-drawn funnel is not. */
+.pivot__head > :first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pivot__head .colfilter__trigger {
+  flex: 0 0 auto;
 }
 
 .colfilter__trigger {

@@ -179,11 +179,13 @@ export default function ColumnFilter({
 export function ColumnFilterButton({ column, isFiltered, isSorted, onOpen }) {
   return (
     <span className={`colfilter__trigger${isFiltered || isSorted ? ' is-applied' : ''}`}>
+      {/* xs: the control shares a 36px header cell with the column's own name,
+          and anything larger pushes the label around as it appears. */}
       <ArvoIconButton
-        icon={isFiltered ? 'filter-filled' : 'filter'}
+        icon={isFiltered ? 'filter-filled' : 'filter-ext'}
         tooltip={isFiltered ? `${column}: filtered` : `Filter ${column}`}
         variant="tertiary"
-        size="sm"
+        size="xs"
         onClick={(event) => onOpen(column, event.currentTarget ?? event.target)}
       />
     </span>

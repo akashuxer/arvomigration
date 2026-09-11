@@ -183,13 +183,28 @@ export function PivotToolbar() {
   )
 }
 
-/* The columns a value filter makes sense on. Months hold numbers and are
- * filtered through Manage Value Filters instead; Actions holds controls. */
-const FILTERABLE = [
+/* Every column that holds data gets a filter -- the member columns by label,
+ * the months by the numbers in them, which is how a spreadsheet does it. Only
+ * Actions is left out, since it holds controls rather than values.
+ *
+ * Months sort their customer groups by that month's Units Actuals rather than
+ * alphabetically: sorting a column of numbers by someone else's name is the
+ * kind of result that makes people stop using the control. */
+const MEMBER_COLUMNS = [
   { id: 'product', label: 'Product Line', of: (row) => row.product },
   { id: 'customer', label: 'Customer Group', of: (row) => row.customerLabel },
   { id: 'metric', label: 'Data', of: (row) => row.metric },
 ]
+
+const MONTH_COLUMNS = MONTHS.map((month, index) => ({
+  id: month,
+  label: month,
+  isMonth: true,
+  index,
+  of: (row) => String(row.values[index]),
+}))
+
+const FILTERABLE = [...MEMBER_COLUMNS, ...MONTH_COLUMNS]
 
 export default function PivotTable({ hasToolbar = true, isV2 = false }) {
   const tableRef = useRef(null)
@@ -247,7 +262,25 @@ export default function PivotTable({ hasToolbar = true, isV2 = false }) {
     if (sorted) {
       const direction = columnState[sorted.label].sort === 'asc' ? 1 : -1
       const groups = [...new Set(result.map((row) => row.customerLabel))]
-      groups.sort((a, b) => a.localeCompare(b) * direction)
+
+      /* A month sorts its groups by that month's actuals; a member column sorts
+         them by the label you clicked on. */
+      const rank = (group) => {
+        const rows = result.filter((row) => row.customerLabel === group)
+        if (sorted.isMonth) {
+          const actuals = rows.find((row) => row.isActual) ?? rows[0]
+          return actuals.values[sorted.index]
+        }
+        return sorted.of(rows[0])
+      }
+
+      groups.sort((a, b) => {
+        const left = rank(a)
+        const right = rank(b)
+        const order =
+          typeof left === 'number' ? left - right : String(left).localeCompare(String(right))
+        return order * direction
+      })
       result = groups.flatMap((group) => result.filter((row) => row.customerLabel === group))
     }
     return result
@@ -301,7 +334,7 @@ export default function PivotTable({ hasToolbar = true, isV2 = false }) {
           <thead>
             <tr>
               <th scope="col" className="pivot__cell--center">Actions</th>
-              {FILTERABLE.map(({ id, label }) => (
+              {MEMBER_COLUMNS.map(({ id, label }) => (
                 <th
                   scope="col"
                   key={id}
@@ -333,9 +366,19 @@ export default function PivotTable({ hasToolbar = true, isV2 = false }) {
                      design system already defines what "this is now" looks like
                      in a grid, and it carries the specificity to beat the
                      sticky header's background. */
-                  className={index === CURRENT_PERIOD ? 'pivot__cell--currenttime' : undefined}
+                  className={`pivot__cell--filterable${
+                    index === CURRENT_PERIOD ? ' pivot__cell--currenttime' : ''
+                  }`}
                 >
-                  {month}
+                  <span className="pivot__head">
+                    {month}
+                    <ColumnFilterButton
+                      column={month}
+                      isFiltered={Boolean(columnState[month]?.values)}
+                      isSorted={Boolean(columnState[month]?.sort)}
+                      onOpen={openFilter}
+                    />
+                  </span>
                 </th>
               ))}
               {isV2 && <th scope="col">Trend</th>}
