@@ -4,10 +4,10 @@ import {
   ArvoAvatar,
   ArvoDropdownIconButton,
   ArvoIconButton,
-  ArvoTooltip,
 } from '@arvo/react'
 import NotificationsPopover from './NotificationsPopover'
 import CreatePostWindow from './CreatePostWindow'
+import ProfilePopover from './ProfilePopover'
 
 
 /* Every action the header offers, in the order the menu lists them.
@@ -47,12 +47,6 @@ const IDENTITY = {
   name: 'Kayle Sank',
   email: 'kayle.sink@o9solutions.com',
 }
-
-const IDENTITY_TOOLTIP = [
-  `Tenant: ${IDENTITY.tenant}`,
-  IDENTITY.name,
-  IDENTITY.email,
-].join('\n')
 
 // The View Tabs: the top-level report views this workspace offers.
 export const VIEW_TABS = [
@@ -268,21 +262,25 @@ export default function Header({
           isInteractive
           onClick={onOpenNova}
         />
-        {/* One trigger across both, so hovering either the tenant or the
-            avatar answers the whole question.
+        {/* One target across both, because the tenant and the avatar are one
+            identity between them -- the tenant says whose data is on screen,
+            the avatar says who is reading it.
             *
-            * ArvoTooltip, not the rich one: this is a description of what you
-            * are looking at, which is what the plain dark bubble is for. The
-            * rich tooltip is a light panel built to carry titles, badges and
-            * actions, none of which a name and an address need. Its content is
-            * a string, so the three lines are newlines and the surface is told
-            * to honour them. */}
-        <ArvoTooltip content={IDENTITY_TOOLTIP} placement="bottom-end">
-          <span className="identity" ref={identityRef}>
-            <span className="tenant-name">{IDENTITY.tenant}</span>
-            <ArvoAvatar variant="initials" name={IDENTITY.name} size="md" />
-          </span>
-        </ArvoTooltip>
+            * A click, not a hover tooltip. It used to be three lines in a dark
+            * bubble; a tooltip cannot hold a tenant switcher or a logout, and
+            * once the panel exists two surfaces answering "who am I" from the
+            * same target is one more than the question needs. */}
+        <button
+          type="button"
+          className="identity"
+          ref={identityRef}
+          aria-haspopup="dialog"
+          aria-label={`Account: ${IDENTITY.name}, ${IDENTITY.tenant}`}
+        >
+          <span className="tenant-name">{IDENTITY.tenant}</span>
+          <ArvoAvatar variant="initials" name={IDENTITY.name} size="md" />
+        </button>
+        <ProfilePopover triggerRef={identityRef} identity={IDENTITY} />
       </div>
     </header>
   )
