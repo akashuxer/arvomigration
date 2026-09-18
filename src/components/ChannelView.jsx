@@ -306,9 +306,13 @@ function KpiBand() {
 const tipMoney = (n) =>
   n >= 1_000_000 ? `$${(n / 1_000_000).toFixed(0)} m` : `$${Math.round(n / 1000)} k`
 
-function TradeSpendChart({ isCumulative, expandedId }) {
+/* `chartRef` is owned by ChannelView rather than created here: the tile header
+ * sits outside this component, and the relocated legend in Report Settings has
+ * to reach the same Highcharts instance this draws into. */
+function TradeSpendChart({ isCumulative, expandedId, chartRef }) {
   const el = useRef(null)
-  const chart = useRef(null)
+  const ownChart = useRef(null)
+  const chart = chartRef ?? ownChart
   /* Per-series type overrides, keyed by series index. Applied through
    * chart.update rather than folded into the build, so switching a series to a
    * line does not rebuild and re-animate the whole chart. */
@@ -478,6 +482,7 @@ function TradeSpendChart({ isCumulative, expandedId }) {
         },
       },
       legend: {
+        enabled: settings.chartLegend !== 'settings',
         align: 'left',
         verticalAlign: 'bottom',
         symbolRadius: 0,
@@ -560,6 +565,7 @@ function TradeSpendChart({ isCumulative, expandedId }) {
       {
         xAxis: { labels: { style: style(settings.chartXSize, settings.chartXWeight) } },
         yAxis: { labels: { style: style(settings.chartYSize, settings.chartYWeight) } },
+        legend: { enabled: settings.chartLegend !== 'settings' },
       },
       true,
       false,
@@ -716,6 +722,9 @@ function TileHeader({ title, subtitle, actions, isExpanded, onToggle }) {
 }
 
 export default function ChannelView({ onReportSelect }) {
+  // Held here so the tile header's ChartActions and the chart below it are
+  // talking about the same Highcharts instance.
+  const spendChart = useRef(null)
   const [expandedId, setExpandedId] = useState(null)
   const [isCumulative, setIsCumulative] = useState(false)
   const toggle = (id) => setExpandedId((current) => (current === id ? null : id))
@@ -744,12 +753,20 @@ export default function ChannelView({ onReportSelect }) {
           title="Trade Spend"
           subtitle="Price protection, promo allowances and regional incentives against target"
           actions={
-            <ChartActions isCumulative={isCumulative} onCumulativeChange={setIsCumulative} />
+            <ChartActions
+              isCumulative={isCumulative}
+              onCumulativeChange={setIsCumulative}
+              chartRef={spendChart}
+            />
           }
           isExpanded={expandedId === 'spend'}
           onToggle={() => toggle('spend')}
         />
-        <TradeSpendChart isCumulative={isCumulative} expandedId={expandedId} />
+        <TradeSpendChart
+          isCumulative={isCumulative}
+          expandedId={expandedId}
+          chartRef={spendChart}
+        />
       </section>
 
       <section

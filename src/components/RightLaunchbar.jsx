@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef, useState } from 'react'
 import { ArvoIconButton } from '@arvo/react'
+import FavoritesMenu from './FavoritesMenu'
 
 /* The three launchers, and the panel each one opens. `title` is the panel
  * heading, which is not always the launcher's own label -- Settings opens User
@@ -12,6 +13,10 @@ export const PANELS = [
 
 export default function RightLaunchbar({ isHidden = false, activePanel, onPanelChange }) {
   const [isCollapsed, setIsCollapsed] = useState(false)
+  /* Favorites has no panel, so `activePanel` cannot describe it -- but it is a
+     tool on this rail and has to wear the same active treatment as the others
+     while its menu is showing. */
+  const [isFavoritesOpen, setIsFavoritesOpen] = useState(false)
   const toolsRef = useRef(null)
   const [indicator, setIndicator] = useState(null)
 
@@ -19,7 +24,7 @@ export default function RightLaunchbar({ isHidden = false, activePanel, onPanelC
   // rather than jumping into position afterwards.
   useLayoutEffect(() => {
     const tools = toolsRef.current
-    if (!tools || !activePanel) {
+    if (!tools || (!activePanel && !isFavoritesOpen)) {
       setIndicator(null)
       return
     }
@@ -35,7 +40,7 @@ export default function RightLaunchbar({ isHidden = false, activePanel, onPanelC
     const observer = new ResizeObserver(measure)
     observer.observe(tools)
     return () => observer.disconnect()
-  }, [activePanel, isCollapsed])
+  }, [activePanel, isFavoritesOpen, isCollapsed])
 
   const classes = [
     'right-launchbar',
@@ -60,6 +65,16 @@ export default function RightLaunchbar({ isHidden = false, activePanel, onPanelC
               style={{ '--tool-y': `${indicator.y}px`, '--tool-h': `${indicator.h}px` }}
             />
           )}
+
+          {/* Favorites, moved here from the filter bar. Everything about it is
+              unchanged -- it is still a dropdown, with the same rows, the same
+              Save As popover and the same per-row actions. Only its position
+              moved, off a bar that was already carrying the filter chips.
+
+              Not a member of PANELS: those ids drive the docked panel slot, and
+              this opens a menu rather than a panel, so it has no place in the
+              sliding active indicator either. */}
+          <FavoritesMenu onOpenChange={setIsFavoritesOpen} />
 
           {PANELS.map(({ id, icon, label }) => (
             <ArvoIconButton

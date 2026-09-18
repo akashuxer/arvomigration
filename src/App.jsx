@@ -192,7 +192,7 @@ function AppShell() {
        component that raised it. */
     <ArvoToastProvider position="top-right">
     <div
-      className={`app-container${isV2 ? ' app-container--v2' : ''} scrollbars--${settings.scrollbar}`}
+      className={`app-container${isV2 ? ' app-container--v2' : ''} scrollbars--${settings.scrollbar} tile-actions--${settings.tileActions} col-dividers--${settings.pivotDividers}`}
       style={settingsToCssVars(settings)}
     >
       {/* One continuous rail from the logo to the bottom, flush to the edge.

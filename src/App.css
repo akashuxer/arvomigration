@@ -947,14 +947,17 @@ body {
 .filter-chip {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   /* Height, not vertical padding: the chips sit in a row with Apply, and a
      bordered box standing a few pixels taller or shorter than the button beside
      it is the kind of misalignment you notice before you can name it. Arvo's sm
      button is 24px, and the chip's own border is inside that box. */
   height: 24px;
   box-sizing: border-box;
-  padding: 0 8px;
+  /* 6px, and the gap tightened to 4: the chip is a read-only summary sitting
+     between two controls, and it was claiming more of the bar than the Filter
+     Set button it follows. Height stays 24 so it still lines up with Apply. */
+  padding: 0 6px;
   white-space: nowrap;
   background-color: var(--arvo-color-s-layer-01, #fff);
   border: 1px solid var(--arvo-color-b-divider, #e5e5e5);
@@ -962,8 +965,8 @@ body {
 
 /* The dimension: quiet, because it is the part you already know. */
 .filter-label {
-  font-size: 14px;
-  line-height: 20px;
+  font-size: 12px;
+  line-height: 18px;
   color: var(--arvo-color-t-secondary, #616161);
 }
 
@@ -973,9 +976,9 @@ body {
 .filter-value {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 14px;
-  line-height: 20px;
+  gap: 6px;
+  font-size: 12px;
+  line-height: 18px;
   font-weight: var(--arvo-medium, 500);
   color: var(--arvo-color-t-primary, #010101);
 }
@@ -988,12 +991,419 @@ body {
   color: var(--arvo-color-t-tertiary, #4c4c4c);
 }
 
+/* Holds the Save As popover's anchor over the favorites button without
+ * intercepting anything aimed at it. */
+.fav-split {
+  position: relative;
+  display: inline-flex;
+}
+
+.fav-anchor {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
 .filter-actions {
   display: flex;
   align-items: center;
   gap: 2px;
   margin-left: auto;
   flex-shrink: 0;
+}
+
+/* ------------------------------------------------------- expanded filter -- */
+
+.filter-shell {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+
+.filter-bar__spacer {
+  margin-left: auto;
+}
+
+/* Expanded, the bar is part of the panel rather than chrome floating on the
+ * canvas -- so it takes the panel's white surface and its edges, and the two
+ * sit as one object separated by a 2px seam. Collapsed it stays transparent,
+ * where being chrome is exactly the point. */
+.filter-shell--expanded .filter-bar {
+  margin: 0 8px;
+  padding: 0 12px;
+  box-sizing: border-box;
+  background-color: var(--arvo-color-s-layer-01, #fff);
+  border: 1px solid var(--arvo-color-b-divider, #e5e5e5);
+}
+
+/* The expansion. 0fr → 1fr animates to the panel's own height, so opening and
+ * closing take the same time whatever the panel happens to contain -- where a
+ * max-height large enough to cover it would make opening fast and closing slow.
+ *
+ * In normal flow, not floating over the canvas: the report below is pushed down
+ * as the panel grows, which keeps the grid readable while you filter it. */
+.filter-expand {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition:
+    grid-template-rows 260ms cubic-bezier(0.2, 0, 0, 1),
+    opacity 180ms ease;
+  opacity: 0;
+}
+
+.filter-shell--expanded .filter-expand {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+
+/* min-height: 0 is what lets a grid item shrink below its content -- without it
+ * the row has nothing to animate against. */
+.filter-expand__clip {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.fpanel {
+  --ftile-width: 132px;
+  --ftile-height: 24px;
+
+  /* space-2 to the Active row above it: the bar and the panel are one surface
+     in two halves, and anything wider reads as two stacked cards. */
+  margin: 2px 8px 8px;
+  background-color: var(--arvo-color-s-layer-01, #fff);
+  border: 1px solid var(--arvo-color-b-divider, #e5e5e5);
+}
+
+/* Dimensions run across and the body scrolls sideways when there are more than
+ * fit. Vertical space is fixed by the five-row grid, so the panel never grows
+ * taller as members are added -- only wider. */
+.fpanel__body {
+  display: flex;
+  align-items: flex-start;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+/* space-16 from the last attribute to the rule, and space-16 again before the
+ * next dimension's first attribute -- so the 2px divider sits in a 32px channel
+ * with equal air on both sides. */
+.fpanel__dim {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex: 0 0 auto;
+  padding: 16px;
+  border-right: 2px solid var(--arvo-color-b-divider, #e5e5e5);
+}
+
+.fpanel__dim:last-child {
+  border-right: 0;
+}
+
+/* heading/h14-m, in secondary ink: the dimension names the group, it is not the
+ * thing being chosen, so it sits behind the attributes rather than over them. */
+.fpanel__dim-name {
+  margin: 0;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: var(--arvo-medium, 500);
+  color: var(--arvo-color-t-secondary, #616161);
+}
+
+/* The attribute columns of one dimension, side by side. */
+.fpanel__attrs {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+/* space-8 between the attribute's header row and its tiles. */
+.fattr {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.fattr__head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 24px;
+}
+
+/* heading/h12-m */
+.fattr__name {
+  font-size: 12px;
+  line-height: 18px;
+  font-weight: var(--arvo-medium, 500);
+  color: var(--arvo-color-t-primary, #010101);
+}
+
+/* How many members the attribute has, in the design's own bordered box. */
+.fattr__count {
+  position: relative;
+  padding: 0 6px;
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--arvo-color-t-secondary, #616161);
+  border: 1px solid var(--arvo-color-b-divider, #e5e5e5);
+}
+
+/* The dot says "you have touched this one" -- which is the thing you cannot
+ * tell from the count, and the thing you want to see when scanning back across
+ * four dimensions to check what you changed. */
+.fattr__count.is-dirty::after {
+  content: '';
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--arvo-color-s-warning-strong, #926200);
+}
+
+.fattr__tools {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: auto;
+  padding-left: 8px;
+}
+
+.fattr__search {
+  width: calc(var(--ftile-width) * 2 + 6px);
+}
+
+/* Five rows, filling column-major, exactly as the design specifies. The row
+ * count is the constant; the number of columns is what varies. */
+.fattr__grid {
+  display: grid;
+  grid-template-rows: repeat(5, var(--ftile-height));
+  grid-auto-flow: column;
+  grid-auto-columns: var(--ftile-width);
+  /* space-6, between tiles and between the columns alike. */
+  gap: 6px;
+}
+
+.fattr__empty {
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--arvo-color-t-tertiary, #4c4c4c);
+}
+
+/* --- member tile ---------------------------------------------------------- *
+ *
+ * The state matrix from the Figma component, as it is drawn there: neutral
+ * greys, square corners, a 2px black ring for focus-visible, a dashed edge for
+ * read-only, and red for excluded. Selected is a grey fill plus a darker edge
+ * rather than a colour of its own -- a grid where a third of the tiles are
+ * filled with an accent stops being readable as a list of members. */
+.ftile {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  height: var(--ftile-height);
+  box-sizing: border-box;
+  padding: 0 8px;
+  font: inherit;
+  font-size: 14px;
+  line-height: 20px;
+  text-align: left;
+  cursor: pointer;
+  color: var(--arvo-color-t-primary, #010101);
+  background-color: var(--arvo-color-s-layer-01, #fff);
+  border: 1px solid var(--arvo-color-b-divider, #e5e5e5);
+  transition:
+    background-color 100ms ease,
+    border-color 100ms ease;
+}
+
+.ftile:hover {
+  background-color: var(--arvo-color-s-layer-02, #f2f2f2);
+}
+
+.ftile:active {
+  background-color: #e6e6e6;
+}
+
+/* 2px and black, drawn inside the box: an outline outside it would overlap the
+ * neighbouring tile across a 6px gap. */
+.ftile:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--arvo-color-b-theme-focus, #010101);
+  border-color: var(--arvo-color-b-theme-focus, #010101);
+}
+
+.ftile.is-selected {
+  background-color: var(--arvo-color-s-layer-02, #f2f2f2);
+  border-color: #b3b3b3;
+}
+
+.ftile.is-selected:hover {
+  background-color: #d9d9d9;
+}
+
+/* Excluded: chosen, and then kept out. Red because it is the one state that
+ * removes data from the report rather than narrowing it. */
+.ftile.is-excluded {
+  color: var(--arvo-color-s-negative-strong, #bc1227);
+  background-color: color-mix(
+    in srgb,
+    var(--arvo-color-s-negative-strong, #bc1227) 6%,
+    var(--arvo-color-s-layer-01, #fff)
+  );
+  border-color: var(--arvo-color-s-negative-strong, #bc1227);
+}
+
+.ftile__label {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The single-select mark. Absent at rest, revealed on hover and focus -- so the
+ * rule arrives at the moment you are about to act on it -- and permanent on the
+ * member that is selected. Straight from the component's state matrix. */
+.ftile__mark {
+  flex: 0 0 auto;
+  font-size: 14px;
+  opacity: 0;
+  color: var(--arvo-color-t-secondary, #616161);
+  transition: opacity 100ms ease;
+}
+
+.ftile--single:hover .ftile__mark,
+.ftile--single:focus-visible .ftile__mark,
+.ftile--single.is-selected .ftile__mark,
+.ftile.is-excluded .ftile__mark {
+  opacity: 1;
+}
+
+.ftile--single.is-selected .ftile__mark {
+  color: var(--arvo-color-t-primary, #010101);
+}
+
+.ftile.is-excluded .ftile__mark {
+  color: var(--arvo-color-s-negative-strong, #bc1227);
+}
+
+/* Occupies a tile's slot but is not a member, so it is drawn as an opening
+ * rather than as an object: dashed, centred, in secondary ink. */
+.ftile--more {
+  justify-content: center;
+  color: var(--arvo-color-t-secondary, #616161);
+  background-color: transparent;
+  border-style: dashed;
+}
+
+/* --- attribute menu ------------------------------------------------------- */
+
+.fpanel__menu-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+}
+
+.fpanel__menu {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  min-width: 240px;
+  padding: 8px 0;
+  background-color: var(--arvo-color-s-layer-01, #fff);
+  border: 1px solid var(--arvo-color-b-divider, #e5e5e5);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 16%);
+}
+
+.fpanel__menu-title {
+  padding: 4px 16px 8px;
+  font-size: 12px;
+  line-height: 16px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--arvo-color-t-tertiary, #4c4c4c);
+}
+
+.fpanel__menu button {
+  padding: 8px 16px;
+  font: inherit;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+  color: var(--arvo-color-t-primary, #010101);
+  background: none;
+  border: 0;
+}
+
+.fpanel__menu button:hover {
+  background-color: var(--arvo-color-s-layer-02, #f2f2f2);
+}
+
+/* --- footer --------------------------------------------------------------- */
+
+.fpanel__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--arvo-color-b-divider, #e5e5e5);
+}
+
+/* --- active row ----------------------------------------------------------- */
+
+.fpanel__active {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.fpanel__active-label,
+.fpanel__active-empty {
+  flex-shrink: 0;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--arvo-color-t-secondary, #616161);
+}
+
+/* Counted, not elided: how much is hidden is the number that decides whether
+ * you need to page at all. */
+.fpanel__page {
+  flex-shrink: 0;
+  padding: 0 4px;
+  font: inherit;
+  font-size: 14px;
+  line-height: 20px;
+  cursor: pointer;
+  color: var(--arvo-color-t-secondary, #616161);
+  background: none;
+  border: 0;
+}
+
+.fpanel__page:hover {
+  color: var(--arvo-color-t-primary, #010101);
+  text-decoration: underline;
+}
+
+/* Chips are ArvoChip now, so their own styles come from the design system --
+ * only the row's flex behaviour belongs here. */
+.fpanel__active .arvo-chip {
+  flex-shrink: 0;
+}
+
+/* Nobody wants a 260ms layout shift they did not ask for. */
+@media (prefers-reduced-motion: reduce) {
+  .filter-expand {
+    transition: none;
+  }
 }
 
 /* ----------------------------------------------------------- content area -- */
@@ -1077,6 +1487,89 @@ body {
 }
 
 /* Tile-level controls sit at the end of the header row. */
+/* The legend, relocated into Report Settings.
+ *
+ * Rows rather than the chart's own inline run: the panel is a column, and the
+ * swatch-then-name pattern down its left edge is easier to scan than a wrapped
+ * paragraph of names would be. */
+.legend-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.legend-list__caption {
+  margin-bottom: 4px;
+  font-size: 12px;
+  line-height: 18px;
+  font-weight: var(--arvo-medium, 500);
+  color: var(--arvo-color-t-secondary, #616161);
+}
+
+.legend-list__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 6px;
+  font: inherit;
+  font-size: 14px;
+  line-height: 20px;
+  text-align: left;
+  cursor: pointer;
+  color: var(--arvo-color-t-primary, #010101);
+  background: none;
+  border: 0;
+}
+
+.legend-list__item:hover {
+  background-color: var(--arvo-color-s-layer-02, #f2f2f2);
+}
+
+/* Hidden series stay listed and stay legible -- greyed, not removed, because
+   the row is how you bring the series back. */
+.legend-list__item.is-off {
+  color: var(--arvo-color-t-tertiary, #4c4c4c);
+  text-decoration: line-through;
+}
+
+.legend-list__item.is-off .legend-list__swatch {
+  opacity: 0.35;
+}
+
+.legend-list__swatch {
+  flex: 0 0 auto;
+  width: 12px;
+  height: 12px;
+}
+
+.legend-list__hint {
+  margin: 8px 0 0;
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--arvo-color-t-secondary, #616161);
+}
+
+/* Reveal-on-hover, when the preference asks for it.
+ *
+ * opacity and pointer-events, not visibility or display: the row keeps its box,
+ * so the tile header does not change height as the controls arrive and the
+ * title does not shift; and -- the part that matters -- a transparent control
+ * is still in the tab order, where a visibility:hidden one is not. Tabbing into
+ * the group trips :focus-within and brings it back into view, so the whole
+ * toolbar stays reachable without a pointer. Hiding it any other way would make
+ * this preference a keyboard trap. */
+.tile-actions--hover .tile-actions {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease;
+}
+
+.tile-actions--hover .report-tile:hover .tile-actions,
+.tile-actions--hover .report-tile:focus-within .tile-actions {
+  opacity: 1;
+  pointer-events: auto;
+}
+
 .tile-actions {
   display: flex;
   align-items: center;
@@ -1232,6 +1725,32 @@ body {
   text-overflow: ellipsis;
   border: 1px solid var(--arvo-color-b-divider, #e5e5e5);
   background-color: var(--arvo-color-s-direct, #fff);
+}
+
+/* Column dividers, on hover.
+ *
+ * border-color, not border-width or display: the cell keeps its 1px box, so the
+ * columns do not shift by a pixel each as the rules arrive. Only the vertical
+ * edges are touched -- the horizontal ones separate rows, which is a different
+ * setting and not this one.
+ *
+ * Hovering the scroll container rather than the individual column: you trace a
+ * row across many columns, and rules that lit one column at a time would flicker
+ * the whole way. The selection ring and the frozen-column edge are drawn as
+ * box-shadows, so neither is affected by this. */
+.col-dividers--hover .pivot__table th,
+.col-dividers--hover .pivot__table td {
+  border-left-color: transparent;
+  border-right-color: transparent;
+  transition: border-color 120ms ease;
+}
+
+.col-dividers--hover .pivot__scroll:hover .pivot__table th,
+.col-dividers--hover .pivot__scroll:hover .pivot__table td,
+.col-dividers--hover .pivot__scroll:focus-within .pivot__table th,
+.col-dividers--hover .pivot__scroll:focus-within .pivot__table td {
+  border-left-color: var(--arvo-color-b-divider, #e5e5e5);
+  border-right-color: var(--arvo-color-b-divider, #e5e5e5);
 }
 
 /* Arvo's l14-m label style: 0.875rem / 500. The type scale ships as SCSS
@@ -1493,12 +2012,15 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
+/* The visual palette, not t-negative: a delta figure is a data mark, and the
+ * semantic token is for interface feedback. Both shades clear 4.5:1 on white --
+ * see INDICATOR in viz.js for the measured figures. */
 .app-container--v2 .kpi__delta--negative {
-  color: var(--arvo-color-t-negative, #bc1227);
+  color: var(--viz-unfavorable, #bc1227);
 }
 
 .app-container--v2 .kpi__delta--positive {
-  color: var(--arvo-color-t-positive, #00804f);
+  color: var(--viz-favorable, #00804f);
 }
 
 .app-container--v2 .kpi__caption {
@@ -1559,6 +2081,109 @@ body {
 .app-container--v2 .pivot__table td.pivot__cell--attr {
   border-right: none;
   box-shadow: inset -1px 0 0 var(--arvo-color-b-divider, #e5e5e5);
+}
+
+/* Column dividers, v2.
+ *
+ * v2 draws horizontal rules only -- see above -- so unlike v1 there is nothing
+ * here to reveal: "Always" has to add the vertical rules, and "On hover" adds
+ * them to the one column the pointer is in.
+ *
+ * An inset shadow, not a border, for the same two reasons the frozen edge uses
+ * one: a border would add a pixel of width per column and shunt the whole table
+ * sideways as it appeared, and a collapsed-border table does not repaint
+ * borders on sticky cells as they travel.
+ *
+ * Both exclusions are load-bearing. --attr already paints its own frozen-edge
+ * shadow and would lose it to this one; --selected paints the selection ring
+ * the same way, and a divider drawn over it would erase the ring on whichever
+ * cell you had just clicked.
+ *
+ * Always: a right-hand rule per column, as a grid has. */
+.app-container--v2.col-dividers--always
+  .pivot__table
+  :is(th, td):not(.pivot__cell--attr):not(.pivot__cell--selected) {
+  box-shadow: inset -1px 0 0 var(--arvo-color-b-divider, #e5e5e5);
+}
+
+/* On hover: both edges of the hovered column, so the column you are reading is
+ * bracketed rather than merely ended. PivotTable publishes the column index on
+ * the table -- CSS has no column combinator, so the index is what lets a rule
+ * reach every cell in the column from a hover on one of them.
+ *
+ * Twenty indices, which covers the widest grid here (four member columns, twelve
+ * months, a trend column) with room to spare. Mechanical, and the alternative --
+ * adding a class to every cell in the column on each mouseover -- churns the DOM
+ * React owns on an event that fires constantly. */
+.app-container--v2.col-dividers--hover
+  .pivot__table[data-hover-col="1"]
+  tr > :nth-child(1):not(.pivot__cell--attr):not(.pivot__cell--selected),
+.app-container--v2.col-dividers--hover
+  .pivot__table[data-hover-col="2"]
+  tr > :nth-child(2):not(.pivot__cell--attr):not(.pivot__cell--selected),
+.app-container--v2.col-dividers--hover
+  .pivot__table[data-hover-col="3"]
+  tr > :nth-child(3):not(.pivot__cell--attr):not(.pivot__cell--selected),
+.app-container--v2.col-dividers--hover
+  .pivot__table[data-hover-col="4"]
+  tr > :nth-child(4):not(.pivot__cell--attr):not(.pivot__cell--selected),
+.app-container--v2.col-dividers--hover
+  .pivot__table[data-hover-col="5"]
+  tr > :nth-child(5):not(.pivot__cell--attr):not(.pivot__cell--selected),
+.app-container--v2.col-dividers--hover
+  .pivot__table[data-hover-col="6"]
+  tr > :nth-child(6):not(.pivot__cell--attr):not(.pivot__cell--selected),
+.app-container--v2.col-dividers--hover
+  .pivot__table[data-hover-col="7"]
+  tr > :nth-child(7):not(.pivot__cell--attr):not(.pivot__cell--selected),
+.app-container--v2.col-dividers--hover
+  .pivot__table[data-hover-col="8"]
+  tr > :nth-child(8):not(.pivot__cell--attr):not(.pivot__cell--selected),
+.app-container--v2.col-dividers--hover
+  .pivot__table[data-hover-col="9"]
+  tr > :nth-child(9):not(.pivot__cell--attr):not(.pivot__cell--selected),
+.app-container--v2.col-dividers--hover
+  .pivot__table[data-hover-col="10"]
+  tr > :nth-child(10):not(.pivot__cell--attr):not(.pivot__cell--selected),
+.app-container--v2.col-dividers--hover
+  .pivot__table[data-hover-col="11"]
+  tr > :nth-child(11):not(.pivot__cell--attr):not(.pivot__cell--selected),
+.app-container--v2.col-dividers--hover
+  .pivot__table[data-hover-col="12"]
+  tr > :nth-child(12):not(.pivot__cell--attr):not(.pivot__cell--selected),
+.app-container--v2.col-dividers--hover
+  .pivot__table[data-hover-col="13"]
+  tr > :nth-child(13):not(.pivot__cell--attr):not(.pivot__cell--selected),
+.app-container--v2.col-dividers--hover
+  .pivot__table[data-hover-col="14"]
+  tr > :nth-child(14):not(.pivot__cell--attr):not(.pivot__cell--selected),
+.app-container--v2.col-dividers--hover
+  .pivot__table[data-hover-col="15"]
+  tr > :nth-child(15):not(.pivot__cell--attr):not(.pivot__cell--selected),
+.app-container--v2.col-dividers--hover
+  .pivot__table[data-hover-col="16"]
+  tr > :nth-child(16):not(.pivot__cell--attr):not(.pivot__cell--selected),
+.app-container--v2.col-dividers--hover
+  .pivot__table[data-hover-col="17"]
+  tr > :nth-child(17):not(.pivot__cell--attr):not(.pivot__cell--selected),
+.app-container--v2.col-dividers--hover
+  .pivot__table[data-hover-col="18"]
+  tr > :nth-child(18):not(.pivot__cell--attr):not(.pivot__cell--selected),
+.app-container--v2.col-dividers--hover
+  .pivot__table[data-hover-col="19"]
+  tr > :nth-child(19):not(.pivot__cell--attr):not(.pivot__cell--selected),
+.app-container--v2.col-dividers--hover
+  .pivot__table[data-hover-col="20"]
+  tr > :nth-child(20):not(.pivot__cell--attr):not(.pivot__cell--selected) {
+  box-shadow:
+    inset 1px 0 0 var(--arvo-color-b-divider, #e5e5e5),
+    inset -1px 0 0 var(--arvo-color-b-divider, #e5e5e5);
+}
+
+/* Fades in rather than snapping, so the bracket reads as the grid responding to
+ * the pointer rather than as a repaint. */
+.app-container--v2.col-dividers--hover .pivot__table :is(th, td) {
+  transition: box-shadow 120ms ease;
 }
 
 /* Actuals anchor each group; the three forecasts are supporting rows. */
@@ -1682,9 +2307,9 @@ body {
   color: var(--arvo-color-t-primary, #010101);
 }
 
-.kpi-cell__value--positive { color: var(--arvo-color-t-positive, #00804f); }
-.kpi-cell__value--negative { color: var(--arvo-color-t-negative, #bc1227); }
-.kpi-cell__value--warning { color: var(--arvo-color-t-warning, #926200); }
+.kpi-cell__value--positive { color: var(--viz-favorable, #00804f); }
+.kpi-cell__value--negative { color: var(--viz-unfavorable, #bc1227); }
+.kpi-cell__value--warning { color: var(--viz-caution, #766900); }
 
 .kpi-cell__meta {
   display: flex;
@@ -1759,9 +2384,9 @@ body {
   background-color: var(--arvo-color-s-theme, #010101);
 }
 
-.kpi-cell__fill--positive { background-color: var(--arvo-color-t-positive, #00804f); }
-.kpi-cell__fill--negative { background-color: var(--arvo-color-t-negative, #bc1227); }
-.kpi-cell__fill--warning { background-color: var(--arvo-color-t-warning, #926200); }
+.kpi-cell__fill--positive { background-color: var(--viz-favorable, #00804f); }
+.kpi-cell__fill--negative { background-color: var(--viz-unfavorable, #bc1227); }
+.kpi-cell__fill--warning { background-color: var(--viz-caution, #766900); }
 
 /* --- the 2x2 of reports --- */
 
@@ -3417,7 +4042,8 @@ body {
 
 .pivot__cell--filterable:hover .colfilter__trigger,
 .pivot__cell--filterable:focus-within .colfilter__trigger,
-.colfilter__trigger.is-applied {
+.colfilter__trigger.is-applied,
+.colfilter__trigger.is-open {
   opacity: 1;
 }
 

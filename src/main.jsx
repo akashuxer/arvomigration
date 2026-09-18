@@ -32,6 +32,19 @@ keepOverlayPlacement()
  * conic ring, a glow) would otherwise hardcode the hexes and drift the day the
  * token changes. Reading them back out of the token keeps one source.
  */
+/* KPI indicator colours, published as custom properties.
+ *
+ * The deltas, meters and outcome strips are data marks, so the palette rules put
+ * them on ArvoVisualPalette rather than on Arvo's semantic t-positive /
+ * t-negative / t-warning, which are for interface feedback. They are applied in
+ * CSS, and viz.js is JavaScript, so the roles are bridged here rather than
+ * having App.css restate four hexes that would then drift from the palette. */
+import { INDICATOR } from './viz'
+
+Object.entries(INDICATOR).forEach(([role, color]) => {
+  document.documentElement.style.setProperty(`--viz-${role}`, color)
+})
+
 const novaStops = getComputedStyle(document.documentElement)
   .getPropertyValue('--arvo-color-s-nova-static')
   .match(/#[0-9a-f]{3,8}/gi)

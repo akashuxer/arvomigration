@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import usePersistentState from '../usePersistentState'
+import { ArvoVisualPalette } from '../ArvoVisualPalette'
 import {
   ArvoButtonGroup,
   ArvoCombobox,
@@ -66,19 +67,40 @@ const DATE_FORMATS = asItems([
 ])
 
 /* The swatches are the palette itself, not an illustration of it -- the whole
- * choice is about what the charts will look like. */
+ * choice is about what the charts will look like.
+ *
+ * Drawn from ArvoVisualPalette, never from hexes typed here.
+ *
+ * This is a visual colour picker in miniature, so rule 5 applies: what is shown
+ * is a selection of the canonical palette, and what is stored is a palette
+ * value the charts can resolve -- not a colour copied out of a mockup.
+ *
+ * The colorblind row deliberately steps *shades* as much as families: it stays
+ * legible when hue is unavailable, which is the whole claim the option makes. */
 const PALETTES = [
   {
     value: 'tenant',
     label: 'Tenant palette',
     hint: 'Matches your workspace branding',
-    colors: ['#bfcbfb', '#2f77f0', '#00a273', '#7a4fd4', '#f98131'],
+    colors: [
+      ArvoVisualPalette.blue.light,
+      ArvoVisualPalette.blueViolet.bright,
+      ArvoVisualPalette.green.dark,
+      ArvoVisualPalette.purple.bright,
+      ArvoVisualPalette.orange.base,
+    ],
   },
   {
     value: 'colorblind',
     label: 'Colorblind safe',
     hint: 'Distinguishable without relying on hue',
-    colors: ['#bcd6ec', '#2e8fbe', '#c08b00', '#99005f', '#04701f'],
+    colors: [
+      ArvoVisualPalette.blue.light,
+      ArvoVisualPalette.blue.bright,
+      ArvoVisualPalette.yellow.darker,
+      ArvoVisualPalette.pink.dark,
+      ArvoVisualPalette.green.darkest,
+    ],
   },
 ]
 
@@ -87,6 +109,44 @@ const SCROLLBAR_OPTIONS = [
   { value: 'always', label: 'Always visible', hint: 'Never hides while content overflows' },
   { value: 'hover', label: 'On hover', hint: 'Appears when the pointer is over the area' },
   { value: 'scroll', label: 'On scroll', hint: 'Appears while scrolling, then fades' },
+]
+
+/* Whether a report tile's toolbar is always there or arrives with the pointer.
+ *
+ * Both are defensible and which is right depends on the person: someone editing
+ * all day wants the controls where their hand already is, someone presenting a
+ * board wants the numbers and nothing else. Naming the trade-off in the hint is
+ * what makes this a choice rather than a coin toss. */
+const TILE_ACTION_OPTIONS = [
+  {
+    value: 'always',
+    label: 'Always visible',
+    hint: 'Every control stays on the tile, ready to use',
+  },
+  {
+    value: 'hover',
+    label: 'Reveal on hover',
+    hint: 'Controls appear when you point at a report, leaving a cleaner page to read',
+  },
+]
+
+/* Where a chart's series names live.
+ *
+ * "Upfront" is the default because a chart whose colours are unexplained is a
+ * picture rather than a reading -- but on a dense board the legend is a band of
+ * text repeated under every tile, and moving it into the report's own settings
+ * buys that space back. */
+const CHART_LEGEND_OPTIONS = [
+  {
+    value: 'chart',
+    label: 'Below every chart',
+    hint: 'Series names are always in view, and clicking one still hides its series',
+  },
+  {
+    value: 'settings',
+    label: 'In the report’s Chart settings',
+    hint: 'Gives the plot the full height of the tile; the series list moves behind the cog',
+  },
 ]
 
 const FONT_SIZES = [12, 14, 16, 18]
@@ -98,6 +158,19 @@ const FONT_WEIGHTS = [
   { value: '400', label: 'Regular' },
   { value: '500', label: 'Medium' },
   { value: '700', label: 'Bold' },
+]
+
+/* Vertical rules between pivot columns.
+ *
+ * On hover by default: a full grid of lines boxes every number in, and the row
+ * bands plus the column alignment already do the separating for reading. The
+ * lines earn their place when you are working *across* a row -- tracing one
+ * customer out to M09 -- which is exactly when the pointer is in the grid.
+ * Always-visible is there for anyone who reads a dense pivot as a table rather
+ * than as a chart of numbers. */
+const DIVIDER_MODES = [
+  { value: 'hover', label: 'On hover' },
+  { value: 'always', label: 'Always' },
 ]
 
 const EXPORT_MODES = [
@@ -308,6 +381,42 @@ export default function UserSettingsPanel({ settings, onChange, focus }) {
                 ))}
               </ArvoRadioGroup>
             </Section>
+
+            <Section
+              title="Report controls"
+              description="Download, Bulk Edit, Filters and the other actions on each report tile."
+            >
+              <ArvoRadioGroup
+                name="tileActions"
+                value={settings.tileActions}
+                onChange={({ value }) => set('tileActions')(value)}
+              >
+                {TILE_ACTION_OPTIONS.map(({ value, label, hint }) => (
+                  <div className="pref-choice" key={value}>
+                    <ArvoRadio value={value} label={label} />
+                    <span className="pref-choice__hint">{hint}</span>
+                  </div>
+                ))}
+              </ArvoRadioGroup>
+            </Section>
+
+            <Section
+              title="Chart legend"
+              description="Where the series names for a chart are shown."
+            >
+              <ArvoRadioGroup
+                name="chartLegend"
+                value={settings.chartLegend}
+                onChange={({ value }) => set('chartLegend')(value)}
+              >
+                {CHART_LEGEND_OPTIONS.map(({ value, label, hint }) => (
+                  <div className="pref-choice" key={value}>
+                    <ArvoRadio value={value} label={label} />
+                    <span className="pref-choice__hint">{hint}</span>
+                  </div>
+                ))}
+              </ArvoRadioGroup>
+            </Section>
           </>
         ) : (
           <>
@@ -341,6 +450,19 @@ export default function UserSettingsPanel({ settings, onChange, focus }) {
                     value={settings.pivotRowSize}
                     items={sizeItems}
                     onChange={setNumber('pivotRowSize')}
+                  />
+                </Field>
+              </FieldGroup>
+
+              <FieldGroup
+                caption="Column dividers"
+                description="The vertical rules between columns in the grid."
+              >
+                <Field label="Show">
+                  <Segmented
+                    value={settings.pivotDividers}
+                    items={DIVIDER_MODES}
+                    onChange={set('pivotDividers')}
                   />
                 </Field>
               </FieldGroup>

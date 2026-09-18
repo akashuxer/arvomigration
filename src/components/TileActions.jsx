@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
 import usePersistentState from '../usePersistentState'
+import { useSettings } from '../SettingsContext'
 import ValueFilterBuilder from './ValueFilterBuilder'
 import BulkEditForm, { BULK_EDIT_TITLES } from './BulkEditForm'
 import DownloadForm from './DownloadForm'
@@ -74,7 +75,7 @@ const DEFAULT_PINNED = ['download', 'bulk-edit', 'filters', 'settings']
  * you could not see the effect of a change while making it. Turning it off also
  * drops the focus trap and scroll lock, so the report stays readable and
  * scrollable underneath. Outside-click still dismisses. */
-function ReportSettings({ isOpen, onOpenChange }) {
+function ReportSettings({ isOpen, onOpenChange, children }) {
   return (
     <ArvoPanel
       displayMode="overlay"
@@ -85,8 +86,54 @@ function ReportSettings({ isOpen, onOpenChange }) {
       isOpen={isOpen}
       onOpenChange={onOpenChange}
     >
-      <p className="panel-placeholder">Report settings content goes here.</p>
+      {children ?? <p className="panel-placeholder">Report settings content goes here.</p>}
     </ArvoPanel>
+  )
+}
+
+/* The legend, when the preference has moved it off the chart.
+ *
+ * Read from the live Highcharts instance rather than from a copy of the series
+ * list: this has to be the same set of series the chart is drawing, including
+ * whatever the type menu has done to them, and a second list here would be one
+ * more thing to keep in step.
+ *
+ * It keeps the legend's behaviour, not just its labels -- the swatch and the
+ * click-to-hide are what a legend is for, and a panel that only named the
+ * series would be a caption, not a relocation. */
+function LegendList({ chartRef }) {
+  const [, forceUpdate] = useState(0)
+  const series = chartRef?.current?.series ?? []
+
+  if (!series.length) return null
+
+  return (
+    <div className="legend-list">
+      <span className="legend-list__caption">Series</span>
+      {series.map((entry, index) => (
+        <button
+          type="button"
+          key={entry.name ?? index}
+          className={`legend-list__item${entry.visible ? '' : ' is-off'}`}
+          aria-pressed={entry.visible}
+          onClick={() => {
+            entry.setVisible(!entry.visible)
+            forceUpdate((n) => n + 1)
+          }}
+        >
+          <span
+            className="legend-list__swatch"
+            style={{ backgroundColor: entry.color }}
+            aria-hidden="true"
+          />
+          {entry.name}
+        </button>
+      ))}
+      <p className="legend-list__hint">
+        Click a series to hide it on the chart. Move the legend back under the chart in
+        Preferences → General → Chart legend.
+      </p>
+    </div>
   )
 }
 
@@ -422,8 +469,10 @@ export function PivotActions() {
   )
 }
 
-export function ChartActions({ isCumulative, onCumulativeChange }) {
+export function ChartActions({ isCumulative, onCumulativeChange, chartRef }) {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+  const { settings } = useSettings()
+  const isLegendInSettings = settings.chartLegend === 'settings'
 
   return (
     <div className="tile-actions">
@@ -437,12 +486,17 @@ export function ChartActions({ isCumulative, onCumulativeChange }) {
       />
       <ArvoIconButton
         icon="cog"
-        tooltip="Settings"
+        /* The cog holds the legend now, so it says so -- otherwise the legend
+           has simply vanished and there is nothing on the tile pointing at
+           where it went. */
+        tooltip={isLegendInSettings ? 'Settings and legend' : 'Settings'}
         variant="tertiary"
         size="sm"
         onClick={() => setIsSettingsOpen(true)}
       />
-      <ReportSettings isOpen={isSettingsOpen} onOpenChange={setIsSettingsOpen} />
+      <ReportSettings isOpen={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
+        {isLegendInSettings && chartRef ? <LegendList chartRef={chartRef} /> : null}
+      </ReportSettings>
     </div>
   )
 }

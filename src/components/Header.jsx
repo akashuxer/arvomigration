@@ -1,4 +1,5 @@
 import { useLayoutEffect, useRef, useState } from 'react'
+import usePersistentState from '../usePersistentState'
 import {
   ArvoAvatar,
   ArvoDropdownIconButton,
@@ -9,9 +10,22 @@ import NotificationsPopover from './NotificationsPopover'
 import CreatePostWindow from './CreatePostWindow'
 
 
-// Actions that are not on the bar itself live behind More Actions. Comments is
-// absent because Create Post now covers it on the bar.
-const MORE_ACTIONS = [
+/* Every action the header offers, in the order the menu lists them.
+ *
+ * This is the single registry behind both surfaces -- the bar renders whatever
+ * is pinned, the menu lists all of them -- so adding an action here puts it in
+ * both places with no second list to keep in step. The same arrangement the
+ * report tiles use for their puzzle menu.
+ *
+ * Nothing is pinned by default. The bar had nine icons on it, which is nine
+ * things to read past before reaching the two that are actually about *now*:
+ * whether anything has happened, and the assistant. Those two stay outside;
+ * everything else is a command you go looking for when you want it, and the
+ * pins are there for whichever ones a given person wants back.
+ */
+const HEADER_ACTIONS = [
+  { id: 'create-post', label: 'Create Post', icon: 'comment-empty' },
+  { id: 'refresh', label: 'Refresh', icon: 'refresh' },
   { id: 'send', label: 'Send', icon: 'paper-plane' },
   { id: 'snapshot', label: 'Create snapshot', icon: 'image' },
   { id: 'download', label: 'Download', icon: 'cloud-download' },
@@ -56,6 +70,43 @@ export default function Header({
   // themselves and reports the count up.
   const [unread, setUnread] = useState(0)
   const [isPostOpen, setIsPostOpen] = useState(false)
+
+  /* Which actions were promoted out of the menu. A layout choice about the
+     workspace rather than about this visit, so it outlives the session. */
+  const [pinned, setPinned] = usePersistentState('header.pinned', [])
+
+  const togglePin = (id) =>
+    setPinned((current) =>
+      current.includes(id) ? current.filter((pin) => pin !== id) : [...current, id],
+    )
+
+  const run = (id) => {
+    if (id === 'create-post') setIsPostOpen(true)
+  }
+
+  /* Menu rows. Selecting a row runs the action; the trailing pin toggles whether
+     it also sits on the bar. The pin returns false so the menu stays open --
+     pinning several in a row should not mean reopening the menu each time. */
+  const menuItems = HEADER_ACTIONS.map(({ id, label, icon }) => {
+    const isPinned = pinned.includes(id)
+    return {
+      id,
+      label,
+      icon,
+      actions: [
+        {
+          id: `pin-${id}`,
+          icon: isPinned ? 'push-pinned' : 'push-pin',
+          ariaLabel: isPinned ? `Unpin ${label}` : `Pin ${label}`,
+          tooltip: isPinned ? `Unpin ${label}` : `Pin ${label}`,
+          onClick: () => {
+            togglePin(id)
+            return false
+          },
+        },
+      ],
+    }
+  })
   const [indicator, setIndicator] = useState(null)
 
   // Measured in a layout effect so the indicator is positioned before paint --
@@ -151,6 +202,20 @@ export default function Header({
       </nav>
 
       <div className="action-icons">
+        {/* Pinned actions, in the registry's order rather than in the order they
+            were pinned -- the bar should not reshuffle itself as you change your
+            mind about what belongs on it. */}
+        {HEADER_ACTIONS.filter(({ id }) => pinned.includes(id)).map(({ id, label, icon }) => (
+          <ArvoIconButton
+            key={id}
+            icon={icon}
+            tooltip={label}
+            variant="tertiary"
+            size="md"
+            onClick={() => run(id)}
+          />
+        ))}
+
         {/* The v1/v2 switch is the "J" shortcut in App.jsx, not a header
             control -- it is a comparison aid, not a user-facing feature. */}
         <ArvoDropdownIconButton
@@ -159,15 +224,11 @@ export default function Header({
           variant="tertiary"
           size="md"
           placement="bottom-end"
-          items={MORE_ACTIONS}
-        />
-        <ArvoIconButton icon="refresh" tooltip="Refresh" variant="tertiary" size="md" />
-        <ArvoIconButton
-          icon="comment-empty"
-          tooltip="Create Post"
-          variant="tertiary"
-          size="md"
-          onClick={() => setIsPostOpen(true)}
+          menuProps={{ menuWidth: 260 }}
+          items={menuItems}
+          /* Menu-level, not per item: ArvoActionMenu calls this prop and ignores
+             any onSelect placed on the item objects. */
+          onSelect={(item) => run(item.id)}
         />
         <CreatePostWindow isOpen={isPostOpen} onOpenChange={setIsPostOpen} />
         <ArvoIconButton

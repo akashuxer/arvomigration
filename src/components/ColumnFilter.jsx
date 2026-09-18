@@ -176,13 +176,24 @@ export default function ColumnFilter({
  * A filter you cannot see is a filter you forget you set, which is how people
  * end up mistrusting a grid; so the resting state is quiet but the applied
  * state never hides. */
-export function ColumnFilterButton({ column, isFiltered, isSorted, onOpen }) {
+export function ColumnFilterButton({ column, isFiltered, isSorted, isOpen, onOpen }) {
   return (
-    <span className={`colfilter__trigger${isFiltered || isSorted ? ' is-applied' : ''}`}>
+    /* is-open holds the button visible while its popover is up. Hover is what
+       reveals it, and the pointer leaves the header the moment it travels down
+       into the popover -- so without this the control vanishes out from under
+       the panel it opened, leaving the panel anchored to nothing. */
+    <span
+      className={`colfilter__trigger${isFiltered || isSorted ? ' is-applied' : ''}${
+        isOpen ? ' is-open' : ''
+      }`}
+    >
       {/* xs: the control shares a 36px header cell with the column's own name,
           and anything larger pushes the label around as it appears. */}
       <ArvoIconButton
-        icon={isFiltered ? 'filter-filled' : 'filter-ext'}
+        /* filled-filter, not filter-filled: the second name has no glyph in
+           this icon font, so the applied state drew an empty box. */
+        icon={isFiltered ? 'filled-filter' : 'filter-ext'}
+        isSelected={isOpen}
         tooltip={isFiltered ? `${column}: filtered` : `Filter ${column}`}
         variant="tertiary"
         size="xs"

@@ -320,7 +320,32 @@ export default function PivotTable({ hasToolbar = true, isV2 = false }) {
         />
       )}
 
-      <div className="pivot__scroll">
+      {/* Which column the pointer is in, as a data attribute on the table.
+       *
+       * The "on hover" divider setting lights the column you are pointing at on
+       * both sides, and CSS cannot reach from a hovered cell to its siblings in
+       * other rows -- there is no column combinator. So the column index is
+       * published here and the stylesheet keys its nth-child rules off it.
+       *
+       * One attribute write, and only when the column actually changes: no
+       * classes are added to cells, nothing React renders is touched, and
+       * moving down a column costs nothing. Delegated from the scroll container
+       * so it survives every filter and sort without rebinding. */}
+      <div
+        className="pivot__scroll"
+        onMouseOver={(event) => {
+          const cell = event.target.closest?.('th, td')
+          const table = tableRef.current
+          if (!table) return
+          const next = cell && table.contains(cell) ? String(cell.cellIndex + 1) : ''
+          if (table.dataset.hoverCol === next) return
+          if (next) table.dataset.hoverCol = next
+          else delete table.dataset.hoverCol
+        }}
+        onMouseLeave={() => {
+          if (tableRef.current) delete tableRef.current.dataset.hoverCol
+        }}
+      >
         <table className="pivot__table" ref={tableRef}>
           <colgroup>
             <col className="pivot__col--actions" />
@@ -348,6 +373,7 @@ export default function PivotTable({ hasToolbar = true, isV2 = false }) {
                       column={label}
                       isFiltered={Boolean(columnState[label]?.values)}
                       isSorted={Boolean(columnState[label]?.sort)}
+                      isOpen={openColumn === label}
                       onOpen={openFilter}
                     />
                   </span>
@@ -376,6 +402,7 @@ export default function PivotTable({ hasToolbar = true, isV2 = false }) {
                       column={month}
                       isFiltered={Boolean(columnState[month]?.values)}
                       isSorted={Boolean(columnState[month]?.sort)}
+                      isOpen={openColumn === month}
                       onOpen={openFilter}
                     />
                   </span>

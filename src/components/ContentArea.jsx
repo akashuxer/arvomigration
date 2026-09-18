@@ -193,6 +193,7 @@ export default function ContentArea({ isV2 = false, onReportSelect }) {
       // Nothing on the o9 platform uses rounded corners, so the Highcharts
       // defaults (columns borderRadius 3, rounded legend symbols) are squared off.
       legend: {
+        enabled: settings.chartLegend !== 'settings',
         align: 'left',
         verticalAlign: 'bottom',
         borderRadius: 0,
@@ -227,6 +228,10 @@ export default function ContentArea({ isV2 = false, onReportSelect }) {
       {
         xAxis: { labels: { style: style(settings.chartXSize, settings.chartXWeight) } },
         yAxis: { labels: { style: style(settings.chartYSize, settings.chartYWeight) } },
+        /* Applied here as well as at construction, so switching the preference
+           reflows the existing chart rather than waiting for the next rebuild.
+           The plot takes back the legend's band in the same redraw. */
+        legend: { enabled: settings.chartLegend !== 'settings' },
       },
       true,
       false,
@@ -278,7 +283,11 @@ export default function ContentArea({ isV2 = false, onReportSelect }) {
           title="Consensus Forecast Waterfall"
           subtitle="30d / 60d / 90d forecast against units actuals"
           actions={
-            <ChartActions isCumulative={isCumulative} onCumulativeChange={setIsCumulative} />
+            <ChartActions
+              isCumulative={isCumulative}
+              onCumulativeChange={setIsCumulative}
+              chartRef={chart}
+            />
           }
           isExpanded={expandedId === 'spend'}
           onToggle={() => toggle('spend')}

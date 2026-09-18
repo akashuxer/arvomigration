@@ -2,6 +2,19 @@ import { useEffect, useRef, useState } from 'react'
 import Highcharts from 'highcharts'
 import { ArvoIconButton } from '@arvo/react'
 import { CUSTOMERS, MONTHS } from './PivotTable'
+import { ACTUAL, FORECAST, MOVEMENT, REFERENCE } from '../viz'
+
+/* KPI tone -> sparkline colour.
+ *
+ * `tone` is the verdict the KPI has already reached about its own measure --
+ * not a direction -- which is what rule 3 asks for: nothing here assumes a rise
+ * is good. Warning takes its own shade rather than folding into favourable,
+ * because "on the edge" and "fine" are different readings. */
+const SPARK_COLOR = {
+  negative: MOVEMENT.unfavorable,
+  positive: MOVEMENT.favorable,
+  warning: ACTUAL,
+}
 
 /* Channel Assortments view: six KPIs over a 2x2 of two charts and two pivots.
  *
@@ -124,7 +137,7 @@ function KpiSpark({ data, tone }) {
           fillOpacity: 0.12,
         },
       },
-      series: [{ data, color: tone === 'negative' ? '#bc1227' : '#2f80ed' }],
+      series: [{ data, color: SPARK_COLOR[tone] ?? MOVEMENT.favorable }],
     },
     [data, tone],
   )
@@ -262,8 +275,10 @@ function ActualVsPlan() {
       itemStyle: { fontSize: '12px', fontWeight: '400', color: '#303030' },
     },
     series: [
-      { name: 'Actual', type: 'spline', data: ACTUALS, color: '#e08600', lineWidth: 2 },
-      { name: 'Plan', type: 'spline', data: F30, color: '#5b6b7c', dashStyle: 'Dash', lineWidth: 2 },
+      { name: 'Actual', type: 'spline', data: ACTUALS, color: ACTUAL, lineWidth: 2 },
+      /* The plan is the line actuals are judged against, which is exactly what
+         REFERENCE names -- and it is dashed, so it never reads as a measure. */
+      { name: 'Plan', type: 'spline', data: F30, color: REFERENCE, dashStyle: 'Dash', lineWidth: 2 },
     ],
   })
   return <div ref={el} />
@@ -287,9 +302,11 @@ function HorizonColumns() {
       column: { borderWidth: 0, borderRadius: 0, groupPadding: 0.12 },
     },
     series: [
-      { name: '30d', data: F30, color: '#2f80ed' },
-      { name: '60d', data: F60, color: '#3cb489' },
-      { name: '90d', data: F90, color: '#b678a8' },
+      /* The same three colours the Market waterfall gives these horizons, so a
+         30d forecast is one colour everywhere in the product (rule 1). */
+      { name: '30d', data: F30, color: FORECAST[0] },
+      { name: '60d', data: F60, color: FORECAST[1] },
+      { name: '90d', data: F90, color: FORECAST[2] },
     ],
   })
   return <div ref={el} />
