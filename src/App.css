@@ -1896,7 +1896,7 @@ body {
  * hairline. 12px throughout -- the same seam used between the KPIs, so the
  * whole view runs on one spacing value inside the 20px outer inset. */
 .app-container--v2 .content-area {
-  gap: 12px;
+  gap: var(--density-gap);
   background-color: transparent;
 
   /* --content-inset is 20px of canvas either side of the reports (declared on
@@ -1921,7 +1921,7 @@ body {
 }
 
 .app-container--v2 .report-tile {
-  padding: 24px;
+  padding: var(--density-tile-pad);
 }
 
 /* The tile header carries the report's controls in v2, so it becomes a single
@@ -1975,7 +1975,7 @@ body {
 .app-container--v2 .kpi-row {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: 12px;
+  gap: var(--density-gap);
 }
 
 .app-container--v2 .kpi {
@@ -1983,7 +1983,7 @@ body {
   flex-direction: column;
   gap: 2px;
   min-width: 0;
-  padding: 16px 20px;
+  padding: var(--density-kpi-pad);
   background-color: var(--arvo-color-s-layer-01, #fff);
 }
 
@@ -2410,7 +2410,7 @@ body {
  * Doubled class on purpose -- `.app-container--v2 .content-area` sets its own
  * gap at the same specificity, so a single class would lose to it. */
 .content-area.content-area--scorecard {
-  gap: 12px;
+  gap: var(--density-gap);
 }
 
 @media (max-width: 900px) {
@@ -4101,4 +4101,191 @@ body {
   .colfilter__trigger {
     transition: none;
   }
+}
+
+/* ------------------------------------------------------------------ density -- */
+
+/* A selectable card, so the preview is part of the target rather than decoration
+ * sitting beside it -- the same arrangement the palette options use. Shared by
+ * Density and Report controls, which are the two settings whose difference is
+ * easier to show than to describe. */
+.pref-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px;
+  border: 1px solid var(--arvo-color-b-divider, #e5e5e5);
+}
+
+.pref-card--on {
+  background-color: var(--arvo-color-s-layer-02, #f2f2f2);
+  border-color: var(--arvo-color-b-theme-focus, #010101);
+}
+
+.pref-card__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+/* A miniature of the layout, not an illustration of it.
+ *
+ * Two cards with a gap between them, padding inside them and rows within that --
+ * the three things density actually moves. The proportions are the layout's own
+ * values scaled down by four, so the preview and the reports cannot drift apart:
+ * 12px/8px of gap becomes 3px/2px, 24px/14px of padding becomes 6px/3px. */
+.density-preview {
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 auto;
+  width: 96px;
+  padding: 4px;
+  background-color: var(--arvo-color-s-layer-02, #f2f2f2);
+  border: 1px solid var(--arvo-color-b-divider, #e5e5e5);
+}
+
+.density-preview__card {
+  display: flex;
+  flex-direction: column;
+  background-color: var(--arvo-color-s-layer-01, #fff);
+}
+
+.density-preview__row {
+  background-color: var(--arvo-color-b-divider, #e5e5e5);
+}
+
+/* Quarter-scale of --density-gap, --density-tile-pad and --density-row-h. */
+.density-preview--comfortable {
+  gap: 3px;
+}
+
+.density-preview--comfortable .density-preview__card {
+  gap: 3px;
+  padding: 6px;
+}
+
+.density-preview--comfortable .density-preview__row {
+  height: 5px;
+}
+
+.density-preview--compact {
+  gap: 2px;
+}
+
+.density-preview--compact .density-preview__card {
+  gap: 2px;
+  padding: 3px;
+}
+
+.density-preview--compact .density-preview__row {
+  height: 4px;
+}
+
+/* The setting itself.
+ *
+ * Applied to the pivot, which is the only surface dense enough for the choice to
+ * mean anything -- a chart tile does not get more readable at 28px rows because
+ * it has no rows. Comfortable is the 36px the grid already used, so choosing it
+ * changes nothing; Compact takes rows and their horizontal padding down together,
+ * because a short row with 12px gutters reads as squashed rather than as dense.
+ *
+ * Out-specifies `.app-container--v2 .pivot__table th, td` (0,2,1) by carrying
+ * both shell classes on the same element. */
+.app-container--v2.density--compact .pivot__table th,
+.app-container--v2.density--compact .pivot__table td {
+  height: var(--density-row-h);
+  padding: 0 var(--density-cell-pad);
+}
+
+.app-container--v2.density--compact .pivot__group-row th {
+  height: var(--density-row-h);
+}
+
+/* The density scale.
+ *
+ * One set of variables for the whole content area -- the gap between widgets,
+ * the padding inside them, and the pivot's row metrics -- so a row and the card
+ * around it tighten together. Density that moved only the grid left the pivot
+ * dense inside a tile still spending 24px on its own border.
+ *
+ * Scoped to the reports on purpose. The rails, the header and the filter bar
+ * keep their spacing at both settings: those are chrome, sized for the pointer
+ * rather than for reading, and shrinking a 40px launcher buys nothing back in
+ * the only place the room is wanted. --content-inset is left alone for the same
+ * reason -- it is the frame around the canvas, and the filter bar aligns its own
+ * left edge to it. */
+.app-container--v2 {
+  --density-gap: 12px;
+  --density-tile-pad: 24px;
+  --density-kpi-pad: 16px 20px;
+  --density-row-h: 36px;
+  --density-cell-pad: 12px;
+}
+
+/* Everything moves by about a third, which is enough to read as a deliberate
+ * change rather than as a rendering difference. The KPI cards give up more
+ * horizontally than vertically: their figures are short and it is the stack of
+ * rows below that people want more of. */
+.app-container--v2.density--compact {
+  --density-gap: 8px;
+  --density-tile-pad: 14px;
+  --density-kpi-pad: 10px 14px;
+  --density-row-h: 28px;
+  --density-cell-pad: 8px;
+}
+
+/* The report-header miniature. A title bar and three buttons, drawn solid when
+ * the buttons are always there and as empty outlines when they are not -- the
+ * outline says "this is where they will be" rather than "these are missing",
+ * which is the actual difference between the two settings. */
+.ctrl-preview {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex: 0 0 auto;
+  width: 96px;
+  height: 34px;
+  padding: 0 6px;
+  box-sizing: border-box;
+  background-color: var(--arvo-color-s-layer-01, #fff);
+  border: 1px solid var(--arvo-color-b-divider, #e5e5e5);
+}
+
+.ctrl-preview__title {
+  width: 26px;
+  height: 5px;
+  background-color: var(--arvo-color-b-divider, #e5e5e5);
+}
+
+.ctrl-preview__buttons {
+  display: flex;
+  gap: 3px;
+}
+
+.ctrl-preview__buttons span {
+  width: 9px;
+  height: 9px;
+}
+
+.ctrl-preview--always .ctrl-preview__buttons span {
+  background-color: var(--arvo-color-b-divider, #e5e5e5);
+}
+
+.ctrl-preview--hover .ctrl-preview__buttons span {
+  border: 1px dashed var(--arvo-color-b-divider, #e5e5e5);
+}
+
+/* Overlapping the buttons it is pointing at, and clipped by nothing -- the tip
+ * sits on the first button so the gesture reads as "here", not "near here". */
+.ctrl-preview__cursor {
+  position: absolute;
+  right: 10px;
+  bottom: 2px;
+  width: 11px;
+  height: 15px;
+  color: var(--arvo-color-t-primary, #010101);
 }

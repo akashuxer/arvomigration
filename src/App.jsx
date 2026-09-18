@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import Header from './components/Header'
 import LeftNav from './components/LeftNav'
 import FilterBar from './components/FilterBar'
@@ -85,6 +85,60 @@ function AppShell() {
   // workflows tree, so the action is reached through the panel's own handle.
   const workflowsRef = useRef(null)
   const isWorkflows = panelConfig?.id === 'workflows'
+
+  /* Memoised, because ArvoPanel mirrors these props into its own state through
+     effects keyed on their identity:
+
+       useEffect(() => setHeaderActionsState(headerActionsProp ?? []), [headerActionsProp])
+
+     Passed as inline literals they were a new object on every render, so the
+     panel set state, re-rendered, and was handed another new object -- React
+     capped it at "Maximum update depth exceeded" and the shell logged it a
+     hundred times a second. The literals read better inline, but stable
+     identity is what this component's contract actually requires. */
+  const panelHeaderActions = useMemo(() => {
+    if (panelConfig?.id === 'nova') {
+      return [
+        { id: 'history', type: 'btn', icon: 'history', tooltip: 'Chat history' },
+        { id: 'new', type: 'btn', icon: 'edit', tooltip: 'New chat' },
+        { id: 'expand', type: 'btn', icon: 'expand', tooltip: 'Expand' },
+      ]
+    }
+    if (isWorkflows) {
+      return [
+        { id: 'favorite', type: 'btn', icon: 'star-o', tooltip: 'Favorite' },
+        { id: 'refresh', type: 'btn', icon: 'refresh', tooltip: 'Refresh' },
+      ]
+    }
+    return undefined
+  }, [panelConfig?.id, isWorkflows])
+
+  const panelStickyHeader = useMemo(
+    () =>
+      isWorkflows
+        ? {
+            search: {
+              placeholder: 'Search Workflows & Favorites',
+              onChange: (value) =>
+                setWorkflowQuery(typeof value === 'string' ? value : value?.value ?? ''),
+            },
+          }
+        : false,
+    [isWorkflows],
+  )
+
+  const panelFab = useMemo(
+    () =>
+      isWorkflows
+        ? {
+            icon: 'plus',
+            tooltip: 'New workflow',
+            ariaLabel: 'New workflow',
+            onClick: () => workflowsRef.current?.openAdd(),
+          }
+        : false,
+    [isWorkflows],
+  )
 
   // Tabs select the view. Channel Assortments is the KPI-led layout; the other
   // two show the chart-and-pivot analysis view.
@@ -192,7 +246,7 @@ function AppShell() {
        component that raised it. */
     <ArvoToastProvider position="top-right">
     <div
-      className={`app-container${isV2 ? ' app-container--v2' : ''} scrollbars--${settings.scrollbar} tile-actions--${settings.tileActions} col-dividers--${settings.pivotDividers}`}
+      className={`app-container${isV2 ? ' app-container--v2' : ''} scrollbars--${settings.scrollbar} tile-actions--${settings.tileActions} col-dividers--${settings.pivotDividers} density--${settings.density}`}
       style={settingsToCssVars(settings)}
     >
       {/* One continuous rail from the logo to the bottom, flush to the edge.
@@ -239,41 +293,9 @@ function AppShell() {
                 /* Search, header actions and the add button are the panel's
                    own features rather than markup in the body -- they belong to
                    the panel chrome and stay put while the body scrolls. */
-                headerActions={
-                  panelConfig.id === 'nova'
-                    ? [
-                        { id: 'history', type: 'btn', icon: 'history', tooltip: 'Chat history' },
-                        { id: 'new', type: 'btn', icon: 'edit', tooltip: 'New chat' },
-                        { id: 'expand', type: 'btn', icon: 'expand', tooltip: 'Expand' },
-                      ]
-                    : isWorkflows
-                    ? [
-                        { id: 'favorite', type: 'btn', icon: 'star-o', tooltip: 'Favorite' },
-                        { id: 'refresh', type: 'btn', icon: 'refresh', tooltip: 'Refresh' },
-                      ]
-                    : undefined
-                }
-                stickyHeader={
-                  isWorkflows
-                    ? {
-                        search: {
-                          placeholder: 'Search Workflows & Favorites',
-                          onChange: (value) =>
-                            setWorkflowQuery(typeof value === 'string' ? value : value?.value ?? ''),
-                        },
-                      }
-                    : false
-                }
-                fab={
-                  isWorkflows
-                    ? {
-                        icon: 'plus',
-                        tooltip: 'New workflow',
-                        ariaLabel: 'New workflow',
-                        onClick: () => workflowsRef.current?.openAdd(),
-                      }
-                    : false
-                }
+                headerActions={panelHeaderActions}
+                stickyHeader={panelStickyHeader}
+                fab={panelFab}
               >
                 {panelConfig.id === 'nova' ? (
                   <NovaPanel />

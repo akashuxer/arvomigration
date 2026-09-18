@@ -81,7 +81,7 @@ const PALETTES = [
   {
     value: 'tenant',
     label: 'Tenant palette',
-    hint: 'Matches your workspace branding',
+    hint: 'Matches your workspace branding.',
     colors: [
       ArvoVisualPalette.blue.light,
       ArvoVisualPalette.blueViolet.bright,
@@ -93,7 +93,7 @@ const PALETTES = [
   {
     value: 'colorblind',
     label: 'Colorblind safe',
-    hint: 'Distinguishable without relying on hue',
+    hint: 'Still tells colours apart if you find some hard to distinguish.',
     colors: [
       ArvoVisualPalette.blue.light,
       ArvoVisualPalette.blue.bright,
@@ -104,11 +104,43 @@ const PALETTES = [
   },
 ]
 
+/* How much space the reports give themselves.
+ *
+ * Two steps, not three. A density control earns its place by making a visible
+ * difference; "Default" sitting between comfortable and compact would be a third
+ * option nobody can describe, and the honest version of it is just whichever of
+ * the two is the default -- which Comfortable is.
+ *
+ * The preview is a miniature of the thing it changes -- two stacked cards with a
+ * gap between them, padding inside them and rows within that -- because all
+ * three move together and a picture of rows alone would describe a third of the
+ * setting. Its proportions come from the same variables the layout uses, so it
+ * cannot drift from what pressing the option actually does.
+ *
+ * The copy names none of that. "Gaps", "padding" and "row height" are how this
+ * is built, not what anyone is choosing between -- a planner picking a density
+ * is deciding whether they would rather read comfortably or scroll less, and
+ * that is the sentence each option gets. The preview carries the mechanics. */
+const DENSITY_OPTIONS = [
+  {
+    value: 'comfortable',
+    label: 'Comfortable',
+    hint: 'More breathing space. Easier to read when you’re working through a report.',
+    cards: [2, 2],
+  },
+  {
+    value: 'compact',
+    label: 'Compact',
+    hint: 'Fits more on screen, so you scroll less.',
+    cards: [3, 4],
+  },
+]
+
 const SCROLLBAR_OPTIONS = [
-  { value: 'default', label: 'Default', hint: 'Follows your operating system' },
-  { value: 'always', label: 'Always visible', hint: 'Never hides while content overflows' },
-  { value: 'hover', label: 'On hover', hint: 'Appears when the pointer is over the area' },
-  { value: 'scroll', label: 'On scroll', hint: 'Appears while scrolling, then fades' },
+  { value: 'default', label: 'Default', hint: 'Follows your computer’s own setting.' },
+  { value: 'always', label: 'Always visible', hint: 'Stays on screen whenever there is more to scroll to.' },
+  { value: 'hover', label: 'On hover', hint: 'Appears when you move over the area.' },
+  { value: 'scroll', label: 'On scroll', hint: 'Appears while you scroll, then fades away.' },
 ]
 
 /* Whether a report tile's toolbar is always there or arrives with the pointer.
@@ -121,14 +153,53 @@ const TILE_ACTION_OPTIONS = [
   {
     value: 'always',
     label: 'Always visible',
-    hint: 'Every control stays on the tile, ready to use',
+    hint: 'Buttons are always there, ready to use.',
   },
   {
     value: 'hover',
     label: 'Reveal on hover',
-    hint: 'Controls appear when you point at a report, leaving a cleaner page to read',
+    hint: 'Buttons appear when you move over a report, so the page stays clear while you read.',
   },
 ]
+
+/* A miniature report header: the title on the left, its buttons on the right.
+ *
+ * Worth a picture for the same reason density was. The difference between these
+ * two is a state you cannot see while you are reading about it -- one of them is
+ * defined by what is *not* on screen until you move the pointer -- and "buttons
+ * appear when you move over a report" is a sentence you have to imagine your way
+ * through. Drawn once as solid and once as outlines, the choice is just visible.
+ */
+function ControlsPreview({ value }) {
+  return (
+    <span className={`ctrl-preview ctrl-preview--${value}`} aria-hidden="true">
+      <span className="ctrl-preview__title" />
+      <span className="ctrl-preview__buttons">
+        <span />
+        <span />
+        <span />
+      </span>
+      {/* A pointer, on the hover option only.
+       *
+       * The dashed outlines say the buttons are drawn on demand; the cursor says
+       * what does the drawing. Without it the outlines could be read as "these
+       * are switched off", which is the opposite of what the setting means.
+       * Aimed at the buttons rather than parked beside them -- it is the act of
+       * pointing that is being illustrated. */}
+      {value === 'hover' && (
+        <svg className="ctrl-preview__cursor" viewBox="0 0 12 16" aria-hidden="true">
+          <path
+            d="M1 1 L1 12.5 L4 9.6 L6.2 14.5 L8.4 13.5 L6.2 8.8 L10.3 8.8 Z"
+            fill="currentColor"
+            stroke="var(--arvo-color-s-layer-01, #fff)"
+            strokeWidth="1"
+            strokeLinejoin="round"
+          />
+        </svg>
+      )}
+    </span>
+  )
+}
 
 /* Where a chart's series names live.
  *
@@ -140,12 +211,12 @@ const CHART_LEGEND_OPTIONS = [
   {
     value: 'chart',
     label: 'Below every chart',
-    hint: 'Series names are always in view, and clicking one still hides its series',
+    hint: 'Always in view under the chart. Click a name to hide that line or bar.',
   },
   {
     value: 'settings',
     label: 'In the report’s Chart settings',
-    hint: 'Gives the plot the full height of the tile; the series list moves behind the cog',
+    hint: 'Tucked away behind the report’s settings, giving the chart itself more room.',
   },
 ]
 
@@ -338,7 +409,7 @@ export default function UserSettingsPanel({ settings, onChange, focus }) {
 
             <Section
               title="Color Palette"
-              description="Used by charts, heatmaps and conditional formatting."
+              description="Used by charts, heatmaps and the colour shading in tables."
             >
               <ArvoRadioGroup
                 name="palette"
@@ -367,6 +438,45 @@ export default function UserSettingsPanel({ settings, onChange, focus }) {
               </ArvoRadioGroup>
             </Section>
 
+            <Section
+              title="Density"
+              description="How tightly everything is packed on screen."
+            >
+              <ArvoRadioGroup
+                name="density"
+                value={settings.density}
+                onChange={({ value }) => set('density')(value)}
+              >
+                {DENSITY_OPTIONS.map(({ value, label, hint, cards }) => (
+                  <div
+                    key={value}
+                    className={`pref-card${
+                      settings.density === value ? ' pref-card--on' : ''
+                    }`}
+                  >
+                    <span className="pref-card__text">
+                      <ArvoRadio value={value} label={label} />
+                      <span className="pref-choice__hint">{hint}</span>
+                    </span>
+                    {/* Decorative: the radio and its label are the control, and a
+                        screen reader gains nothing from a stack of empty divs. */}
+                    <span
+                      className={`density-preview density-preview--${value}`}
+                      aria-hidden="true"
+                    >
+                      {cards.map((rows, card) => (
+                        <span className="density-preview__card" key={card}>
+                          {Array.from({ length: rows }, (_, row) => (
+                            <span className="density-preview__row" key={row} />
+                          ))}
+                        </span>
+                      ))}
+                    </span>
+                  </div>
+                ))}
+              </ArvoRadioGroup>
+            </Section>
+
             <Section title="Scrollbars" description="When scrollbars appear inside reports.">
               <ArvoRadioGroup
                 name="scrollbar"
@@ -384,7 +494,7 @@ export default function UserSettingsPanel({ settings, onChange, focus }) {
 
             <Section
               title="Report controls"
-              description="Download, Bulk Edit, Filters and the other actions on each report tile."
+              description="The Download, Bulk Edit and Filters buttons on each report."
             >
               <ArvoRadioGroup
                 name="tileActions"
@@ -392,9 +502,17 @@ export default function UserSettingsPanel({ settings, onChange, focus }) {
                 onChange={({ value }) => set('tileActions')(value)}
               >
                 {TILE_ACTION_OPTIONS.map(({ value, label, hint }) => (
-                  <div className="pref-choice" key={value}>
-                    <ArvoRadio value={value} label={label} />
-                    <span className="pref-choice__hint">{hint}</span>
+                  <div
+                    key={value}
+                    className={`pref-card${
+                      settings.tileActions === value ? ' pref-card--on' : ''
+                    }`}
+                  >
+                    <span className="pref-card__text">
+                      <ArvoRadio value={value} label={label} />
+                      <span className="pref-choice__hint">{hint}</span>
+                    </span>
+                    <ControlsPreview value={value} />
                   </div>
                 ))}
               </ArvoRadioGroup>
@@ -402,7 +520,7 @@ export default function UserSettingsPanel({ settings, onChange, focus }) {
 
             <Section
               title="Chart legend"
-              description="Where the series names for a chart are shown."
+              description="Where to show the colour key that says what each line and bar means."
             >
               <ArvoRadioGroup
                 name="chartLegend"
@@ -423,7 +541,7 @@ export default function UserSettingsPanel({ settings, onChange, focus }) {
             <Section id="pivot" icon="pivot" title="Pivot" isFlashed={flash === 'pivot'}>
               <FieldGroup
                 caption="Column header"
-                description="The row of column names at the top of every grid."
+                description="The row of column names at the top of every table."
               >
                 <Field label="Size">
                   <Segmented
@@ -443,7 +561,7 @@ export default function UserSettingsPanel({ settings, onChange, focus }) {
 
               <FieldGroup
                 caption="Rows"
-                description="Every data cell beneath the header."
+                description="The numbers below the column names."
               >
                 <Field label="Size">
                   <Segmented
@@ -456,7 +574,7 @@ export default function UserSettingsPanel({ settings, onChange, focus }) {
 
               <FieldGroup
                 caption="Column dividers"
-                description="The vertical rules between columns in the grid."
+                description="The lines that separate one column from the next."
               >
                 <Field label="Show">
                   <Segmented
@@ -469,7 +587,7 @@ export default function UserSettingsPanel({ settings, onChange, focus }) {
 
               <FieldGroup
                 caption="Export"
-                description="How numbers are written to a downloaded file."
+                description="How numbers are saved when you download a report."
               >
                 <Field label="Values as">
                   <Segmented
@@ -484,7 +602,7 @@ export default function UserSettingsPanel({ settings, onChange, focus }) {
             <Section id="chart" icon="bar-chart" title="Chart" isFlashed={flash === 'chart'}>
               <FieldGroup
                 caption="X-axis labels"
-                description="The category names along the bottom of a chart."
+                description="The labels along the bottom of a chart."
               >
                 <Field label="Size">
                   <Segmented

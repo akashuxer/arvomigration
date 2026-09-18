@@ -20,6 +20,7 @@ export const DEFAULT_SETTINGS = {
   dateFormat: 'default',
   palette: 'tenant',
   scrollbar: 'default',
+  density: 'comfortable',
   tileActions: 'hover',
   chartLegend: 'settings',
   pivotHeaderSize: 14,
