@@ -4060,19 +4060,32 @@ body {
  * column carries a filter its trigger stays visible, because a filter you
  * cannot see is one you forget you set, and that is how people stop trusting
  * what a grid is showing them. */
+/* Fills the cell, so the trigger is positioned against the cell's own right
+ * edge rather than against the end of the label. Without the width the row
+ * shrink-wrapped to its text -- 96px inside a 120px cell -- and the button sat
+ * 13px past the boundary, where the cell's `overflow: hidden` ate all but a
+ * 3px sliver of it. On the Channel grid that was the only column filter there
+ * is, so the feature looked missing rather than clipped. */
 .pivot__head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 4px;
+  width: 100%;
   min-width: 0;
 }
 
 /* The label yields before the control does: a truncated month is still
  * readable, a half-drawn funnel is not. */
-.pivot__head > :first-child {
+/* A class, not `> :first-child`. The label used to be a bare text node, which
+ * is an anonymous flex item -- no element for the selector to match, so the
+ * truncation never applied and the label pushed the button out instead of
+ * yielding to it. Both grids wrap it in a span now. */
+.pivot__head-label {
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
 }
 
 .pivot__head .colfilter__trigger {
@@ -4556,4 +4569,218 @@ button.profile__row:hover {
   margin: 0;
   font-variant-numeric: tabular-nums;
   color: var(--arvo-color-t-tertiary, #4c4c4c);
+}
+
+/* ----------------------------------------------------------------- skeleton -- */
+
+/* Shapes borrow the design system's own skeleton animation and surface token.
+ *
+ * `arvo-skeleton-shimmer`, not `arvo-shimmer`: the bundle defines the latter
+ * twice with conflicting keyframes -- one translates, one fades -- so whichever
+ * loads last wins and the result is not reliably a sweep. The skeleton keyframe
+ * is unambiguous. */
+.skel {
+  --skel-bg: var(--arvo-color-s-disabled, #e5e5e5);
+}
+
+.skel__sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* One rule for every shape: the tinted block, and a sweep travelling across it.
+ * The sweep is a pseudo-element so it can overflow its own box and be clipped,
+ * which is what makes it read as light moving rather than as opacity pulsing. */
+.skel__bar,
+.skel__col,
+.skel__cell {
+  position: relative;
+  overflow: hidden;
+  background-color: var(--skel-bg);
+}
+
+.skel__bar::after,
+.skel__col::after,
+.skel__cell::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.55) 50%,
+    transparent 100%
+  );
+  animation: arvo-skeleton-shimmer 1.5s linear infinite;
+  will-change: transform;
+}
+
+/* The KPI band, at the real card proportions. */
+.skel__kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: var(--density-gap, 12px);
+}
+
+.skel__kpi {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: var(--density-kpi-pad, 16px 20px);
+  background-color: var(--arvo-color-s-layer-01, #fff);
+}
+
+.skel__bar--label {
+  width: 52%;
+  height: 10px;
+}
+
+/* Taller, because the figure is the thing the card exists for -- a skeleton
+   with uniform bars says "some text goes here" and nothing more. */
+.skel__bar--figure {
+  width: 68%;
+  height: 22px;
+}
+
+.skel__bar--caption {
+  width: 40%;
+  height: 8px;
+}
+
+.skel__bar--title {
+  width: 180px;
+  height: 14px;
+}
+
+.skel__tile {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: var(--density-tile-pad, 24px);
+  background-color: var(--arvo-color-s-layer-01, #fff);
+}
+
+/* Columns sitting on a baseline, so the block reads as a chart at a glance. */
+.skel__chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  height: 200px;
+}
+
+.skel__col {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.skel__grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.skel__row {
+  display: grid;
+  grid-template-columns: 120px 120px 1fr 90px 90px 90px 90px;
+  gap: 12px;
+  align-items: center;
+}
+
+.skel__cell {
+  height: 10px;
+}
+
+.skel__cell--member {
+  height: 10px;
+}
+
+.skel__cell--wide {
+  height: 10px;
+}
+
+/* A moving sweep is the one part of this that is decoration rather than
+ * information, so it is the part that goes. The shapes stay: they are still
+ * saying what is arriving and where. */
+@media (prefers-reduced-motion: reduce) {
+  .skel__bar::after,
+  .skel__col::after,
+  .skel__cell::after {
+    animation: none;
+  }
+}
+
+/* Filter-bar skeleton. The bar keeps its own layout -- these are just the
+ * shapes standing in for its controls, at their real sizes so nothing shifts
+ * when the bar itself returns. */
+.filter-bar.skel {
+  --skel-bg: var(--arvo-color-s-disabled, #e5e5e5);
+}
+
+.skel__icon {
+  width: 24px;
+  height: 24px;
+  flex: 0 0 auto;
+}
+
+.skel__set {
+  width: 120px;
+  height: 24px;
+  flex: 0 0 auto;
+}
+
+.skel__chips {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.skel__chip {
+  height: 24px;
+  flex: 0 0 auto;
+}
+
+.skel__apply {
+  width: 72px;
+  height: 24px;
+  flex: 0 0 auto;
+  margin-left: auto;
+}
+
+/* A two-row header stacks; it does not pile up.
+ *
+ * Every thead cell is sticky at top:0, which is right for a single header row
+ * and wrong for two: on the first scroll the second row -- the one carrying the
+ * column names and their filter buttons -- slid underneath the group row above
+ * it and disappeared. On the Channel grid that took the only column filter with
+ * it, which is why it looked as though the feature was missing there.
+ *
+ * The second row sticks one row-height down, so the two hold their order. The
+ * offset is the density variable rather than a literal, or Compact would leave a
+ * 8px gap between them. */
+.app-container--v2 .pivot__table thead tr:nth-child(2) th {
+  top: var(--density-row-h, 36px);
+}
+
+/* And it has to paint above the body it is scrolling over, but below the group
+ * row it sits under. */
+.app-container--v2 .pivot__table thead tr:nth-child(1) th {
+  z-index: 4;
+}
+
+/* Rows-only skeleton, living inside the real table so the columns keep their
+ * widths and nothing shifts when the data lands. */
+.skel__tbody td {
+  vertical-align: middle;
+}
+
+.skel__tcell {
+  display: block;
+  width: 100%;
+  height: 10px;
 }

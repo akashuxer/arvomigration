@@ -74,7 +74,7 @@ const BUILT_IN_FAVORITES = [
  * The header already shows it; the save form should not make you retype it. */
 const VIEW_NAME = 'Market Plan'
 
-export default function FavoritesMenu({ onOpenChange }) {
+export default function FavoritesMenu({ onOpenChange, onApply }) {
   const toast = useToast()
   const anchorRef = useRef(null)
   const menuRef = useRef(null)
@@ -300,6 +300,9 @@ export default function FavoritesMenu({ onOpenChange }) {
           const selectable = [...BUILT_IN_FAVORITES, ...savedFavorites]
           if (selectable.some((entry) => entry.id === item.id)) {
             setSelectedFavorite(item.id)
+            // A favorite is a saved set of filters, so applying one reloads the
+            // reports -- the shell shows its skeleton while that happens.
+            onApply?.()
           }
         }}
       />

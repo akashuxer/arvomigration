@@ -134,7 +134,7 @@ const WORKFLOW_MENU = [
   { id: 'delete', label: 'Delete', icon: 'trash', destructive: true },
 ]
 
-const WorkflowsPanel = forwardRef(function WorkflowsPanel({ query = '' }, ref) {
+const WorkflowsPanel = forwardRef(function WorkflowsPanel({ query = '', onApply }, ref) {
   const toast = useToast()
   const [workflows, setWorkflows] = usePersistentState('workflows', INITIAL_WORKFLOWS)
   const [selected, setSelected] = usePersistentState('workflow.selected', 'forecast-accuracy')
@@ -414,7 +414,16 @@ const WorkflowsPanel = forwardRef(function WorkflowsPanel({ query = '' }, ref) {
                    the same actions, and a control that appears only under the
                    pointer is invisible until you go looking for it. */
                 actionsVisibility="always"
-                onItemClick={({ id }) => setSelected(id)}
+                onItemClick={({ id }) => {
+                  /* Opening a favorite from here loads a different view, the
+                     same as picking one from the star -- so it gets the same
+                     skeleton rather than silently swapping the numbers. Only on
+                     an actual change: re-clicking the open favorite reloads
+                     nothing, and a skeleton for that would be a lie. */
+                  if (id === selected) return
+                  setSelected(id)
+                  onApply?.()
+                }}
                 items={shown.map((favorite) => ({
                   ...favorite,
                   /* Marked per item. `selectedIds` on the list did not reach

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import Header from './components/Header'
 import LeftNav from './components/LeftNav'
 import FilterBar from './components/FilterBar'
+import ContentSkeleton, { FilterBarSkeleton } from './components/ContentSkeleton'
 import ContentArea from './components/ContentArea'
 import ChannelView from './components/ChannelView'
 import { ArvoPanel, ArvoToastProvider } from '@arvo/react'
@@ -145,6 +146,39 @@ function AppShell() {
   const [activeTab, setActiveTab] = usePersistentState('tab.active', 'market')
   const showScorecard = activeTab === 'channel'
 
+  /* The report area, while a view is being put together.
+   *
+   * Two things trigger it: opening a view, and applying a saved favorite --
+   * both change every number on screen, which is exactly when a page that
+   * simply swaps content leaves you unsure whether anything happened.
+   *
+   * A view you have not opened this session waits longer than one you are
+   * coming back to. That is not theatre: the first visit is the one that
+   * genuinely fetches, and matching the wait to it means the skeleton is
+   * telling the truth rather than performing. `seen` is per session, not
+   * persisted -- a reload is a cold start again. */
+  const [isLoading, setIsLoading] = useState(false)
+  const seenTabs = useRef(new Set())
+  // In a ref, not a property hung off the function: one timer at a time, and a
+  // rapid second switch replaces the first rather than racing it.
+  const loadTimer = useRef(null)
+
+  const load = (ms) => {
+    setIsLoading(true)
+    window.clearTimeout(loadTimer.current)
+    loadTimer.current = window.setTimeout(() => setIsLoading(false), ms)
+  }
+
+  useEffect(() => {
+    const isFirstVisit = !seenTabs.current.has(activeTab)
+    seenTabs.current.add(activeTab)
+    load(isFirstVisit ? 850 : 320)
+    return () => window.clearTimeout(loadTimer.current)
+  }, [activeTab])
+
+  // Applying a favorite re-filters everything, so it gets the same treatment.
+  const onFavoriteApply = () => load(650)
+
   /* Views the user came from, most recent last. Back pops one off rather than
    * flipping to "the other tab" -- with only two tabs those look identical, but
    * a toggle would start lying the moment a third view is added. */
@@ -265,11 +299,24 @@ function AppShell() {
         />
         <div className="app-body">
           <div className="app-content">
-            <FilterBar
-              chips={showScorecard ? CHANNEL_CHIPS : MARKET_CHIPS}
-              isV2={isV2}
-            />
-            {showScorecard ? (
+            {/* The filter bar is part of what is being rebuilt: its chips
+                describe the view that is arriving, so leaving them on screen
+                during the wait shows the previous view's filters over the next
+                view's skeleton. */}
+            {isLoading ? (
+              <FilterBarSkeleton />
+            ) : (
+              <FilterBar
+                chips={showScorecard ? CHANNEL_CHIPS : MARKET_CHIPS}
+                isV2={isV2}
+              />
+            )}
+            {/* The skeleton replaces the report area rather than covering it:
+                an overlay over stale numbers invites reading them, and the whole
+                point of the wait is that those numbers are about to change. */}
+            {isLoading ? (
+              <ContentSkeleton kpis={showScorecard ? 6 : 4} />
+            ) : showScorecard ? (
               <ChannelView onReportSelect={focusSettings} />
             ) : (
               <ContentArea isV2={isV2} onReportSelect={focusSettings} />
@@ -306,7 +353,7 @@ function AppShell() {
                     focus={settingsFocus}
                   />
                 ) : isWorkflows ? (
-                  <WorkflowsPanel ref={workflowsRef} query={workflowQuery} />
+                  <WorkflowsPanel ref={workflowsRef} query={workflowQuery} onApply={onFavoriteApply} />
                 ) : (
                   <p className="panel-placeholder">
                     {panelConfig.title} content goes here.
@@ -320,6 +367,7 @@ function AppShell() {
             isHidden={isFocusMode}
             activePanel={activePanel}
             onPanelChange={setActivePanel}
+            onFavoriteApply={onFavoriteApply}
           />
         </div>
       </div>

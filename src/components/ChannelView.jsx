@@ -7,6 +7,8 @@ import { useSettings } from '../SettingsContext'
 import { MONTHS } from './PivotTable'
 import { OUTCOME, REFERENCE, SPEND, alpha, heat } from '../viz'
 import PivotContextMenu from './PivotContextMenu'
+import ColumnFilter, { ColumnFilterButton } from './ColumnFilter'
+import { PivotRowsSkeleton } from './ContentSkeleton'
 import ChartContextMenu from './ChartContextMenu'
 import usePivotCellFocus from './usePivotCellFocus'
 
@@ -624,12 +626,82 @@ const compact = (n) =>
   n >= 1_000_000 ? `$${(n / 1_000_000).toFixed(1)} m` : `$${(n / 1000).toFixed(1)} k`
 const exact = (n) => `$${n.toLocaleString('en-US')}`
 
+/* Which columns this grid can be filtered by.
+ *
+ * ProductGroup3 only. The rest are measures -- filtering "Billback %" by
+ * picking from a list of its own values is a value filter wearing a member
+ * filter's clothes, and the toolbar already has Manage Value Filters for that.
+ * The Market grid offers months because a month is a member; a currency amount
+ * is not. */
+const FILTERABLE = ['ProductGroup3']
+
 function DetailsPivot() {
   const tableRef = useRef(null)
   usePivotCellFocus(tableRef)
 
+  /* The same arrangement the Market pivot uses: one popover retargeted to
+     whichever header opened it, and a draft that is not applied until OK. */
+  const [openColumn, setOpenColumn] = useState(null)
+  const [columnState, setColumnState] = useState({})
+  const anchorRef = useRef(null)
+  /* Applying a filter refetches the rows, so the rows say so. Only the rows --
+     the chart and the KPIs above are unaffected by a column filter, and a full
+     page skeleton would claim more work than is happening. */
+  const [isFiltering, setIsFiltering] = useState(false)
+  const filterTimer = useRef(null)
+
+  const reload = () => {
+    setIsFiltering(true)
+    window.clearTimeout(filterTimer.current)
+    filterTimer.current = window.setTimeout(() => setIsFiltering(false), 500)
+  }
+
+  useEffect(() => () => window.clearTimeout(filterTimer.current), [])
+
+  const openFilter = (label, trigger) => {
+    anchorRef.current = trigger
+    setOpenColumn(label)
+  }
+
+  const valuesFor = () => [...new Set(ROWS.map((row) => row.group))]
+
+  const applied = columnState.ProductGroup3?.values
+  const sorted = columnState.ProductGroup3?.sort
+  const rows = (() => {
+    let out = applied ? ROWS.filter((row) => applied.has(row.group)) : ROWS
+    if (sorted) {
+      const direction = sorted === 'asc' ? 1 : -1
+      out = [...out].sort((a, b) => a.group.localeCompare(b.group) * direction)
+    }
+    return out
+  })()
+
   return (
     <div className="pivot">
+      {openColumn && (
+        <ColumnFilter
+          anchorRef={anchorRef}
+          column={openColumn}
+          values={valuesFor()}
+          applied={columnState[openColumn]?.values ?? null}
+          sort={columnState[openColumn]?.sort ?? null}
+          onClose={() => setOpenColumn(null)}
+          onApply={({ values, sort }) => {
+            setColumnState((current) => ({
+              ...current,
+              [openColumn]: {
+                // A set covering every value is not a filter -- storing it as
+                // one would light the funnel for a column filtering nothing.
+                values: values && values.size < valuesFor().length ? values : null,
+                sort,
+              },
+            }))
+            setOpenColumn(null)
+            reload()
+          }}
+        />
+      )}
+
       <div className="pivot__scroll">
         <table className="pivot__table" ref={tableRef}>
           <colgroup>
@@ -650,7 +722,18 @@ function DetailsPivot() {
             </tr>
             <tr>
               <th scope="col" className="pivot__cell--center">Actions</th>
-              <th scope="col">ProductGroup3</th>
+              <th scope="col" className="pivot__cell--filterable">
+                <span className="pivot__head">
+                  <span className="pivot__head-label">ProductGroup3</span>
+                  <ColumnFilterButton
+                    column="ProductGroup3"
+                    isFiltered={Boolean(columnState.ProductGroup3?.values)}
+                    isSorted={Boolean(columnState.ProductGroup3?.sort)}
+                    isOpen={openColumn === 'ProductGroup3'}
+                    onOpen={openFilter}
+                  />
+                </span>
+              </th>
               <th scope="col" className="pivot__cell--num">Trade Spend LY</th>
               <th scope="col" className="pivot__cell--num pivot__cell--attr">Growth</th>
               <th scope="col" className="pivot__cell--num">Trade Spend</th>
@@ -661,8 +744,11 @@ function DetailsPivot() {
             </tr>
           </thead>
 
+          {isFiltering ? (
+            <PivotRowsSkeleton rows={4} columns={9} />
+          ) : (
           <tbody>
-            {ROWS.map((row) => (
+            {rows.map((row) => (
               <tr key={row.group}>
                 <td className="pivot__cell--center">
                   <span
@@ -688,6 +774,7 @@ function DetailsPivot() {
               </tr>
             ))}
           </tbody>
+          )}
         </table>
       </div>
       <PivotContextMenu targetRef={tableRef} />

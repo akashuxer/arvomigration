@@ -11,7 +11,12 @@ export const PANELS = [
   { id: 'help', icon: 'question-circle', label: 'Help', title: 'Help' },
 ]
 
-export default function RightLaunchbar({ isHidden = false, activePanel, onPanelChange }) {
+export default function RightLaunchbar({
+  isHidden = false,
+  activePanel,
+  onPanelChange,
+  onFavoriteApply,
+}) {
   const [isCollapsed, setIsCollapsed] = useState(false)
   /* Favorites has no panel, so `activePanel` cannot describe it -- but it is a
      tool on this rail and has to wear the same active treatment as the others
@@ -74,7 +79,7 @@ export default function RightLaunchbar({ isHidden = false, activePanel, onPanelC
               Not a member of PANELS: those ids drive the docked panel slot, and
               this opens a menu rather than a panel, so it has no place in the
               sliding active indicator either. */}
-          <FavoritesMenu onOpenChange={setIsFavoritesOpen} />
+          <FavoritesMenu onOpenChange={setIsFavoritesOpen} onApply={onFavoriteApply} />
 
           {PANELS.map(({ id, icon, label }) => (
             <ArvoIconButton

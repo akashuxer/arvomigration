@@ -5,6 +5,7 @@ import { ACTUAL, DIVERGING, SPEND } from '../viz'
 import PivotContextMenu from './PivotContextMenu'
 import usePivotCellFocus from './usePivotCellFocus'
 import ColumnFilter, { ColumnFilterButton } from './ColumnFilter'
+import { PivotRowsSkeleton } from './ContentSkeleton'
 
 /* In-cell visualisation, applied by row type so no cell carries two treatments:
  *
@@ -214,6 +215,19 @@ export default function PivotTable({ hasToolbar = true, isV2 = false }) {
      anchor is held as a ref so one popover can be retargeted to whichever
      header opened it. */
   const [openColumn, setOpenColumn] = useState(null)
+  /* Applying a filter refetches the rows, so the rows say so. Only the rows --
+     a column filter does not touch the chart or the KPIs above, and a full page
+     skeleton would claim more work than is happening. */
+  const [isFiltering, setIsFiltering] = useState(false)
+  const filterTimer = useRef(null)
+
+  const reload = () => {
+    setIsFiltering(true)
+    window.clearTimeout(filterTimer.current)
+    filterTimer.current = window.setTimeout(() => setIsFiltering(false), 500)
+  }
+
+  useEffect(() => () => window.clearTimeout(filterTimer.current), [])
   const [columnState, setColumnState] = useState({})
   const anchorRef = useRef(null)
 
@@ -316,6 +330,7 @@ export default function PivotTable({ hasToolbar = true, isV2 = false }) {
               },
             }))
             setOpenColumn(null)
+            reload()
           }}
         />
       )}
@@ -368,7 +383,7 @@ export default function PivotTable({ hasToolbar = true, isV2 = false }) {
                   }`}
                 >
                   <span className="pivot__head">
-                    {label}
+                    <span className="pivot__head-label">{label}</span>
                     <ColumnFilterButton
                       column={label}
                       isFiltered={Boolean(columnState[label]?.values)}
@@ -397,7 +412,7 @@ export default function PivotTable({ hasToolbar = true, isV2 = false }) {
                   }`}
                 >
                   <span className="pivot__head">
-                    {month}
+                    <span className="pivot__head-label">{month}</span>
                     <ColumnFilterButton
                       column={month}
                       isFiltered={Boolean(columnState[month]?.values)}
@@ -412,6 +427,9 @@ export default function PivotTable({ hasToolbar = true, isV2 = false }) {
             </tr>
           </thead>
 
+          {isFiltering ? (
+            <PivotRowsSkeleton rows={9} columns={MONTHS.length + (isV2 ? 5 : 4)} />
+          ) : (
           <tbody>
             {rows.map((row, index) => (
               <tr
@@ -473,6 +491,7 @@ export default function PivotTable({ hasToolbar = true, isV2 = false }) {
               </tr>
             ))}
           </tbody>
+          )}
         </table>
       </div>
       <PivotContextMenu targetRef={tableRef} />
